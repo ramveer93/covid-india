@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <!-- Font Awesome CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link href="css/paper-dashboard.css?v=2.0.1" rel="stylesheet" />
+    <!-- <link href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/css/bootstrap4-toggle.min.css" rel="stylesheet"> -->
+
+
+
+
+    <title>Covid-19</title>
+    <style type="text/css">
+        /* #spinner {
+            visibility: hidden;
+        }
+
+        body.busy .spinner {
+            visibility: visible !important;
+        } */
+
+        .bs-example {
+            /* margin: 20px; */
+            width: 100%;
+            height: 200px;
+        }
+
+        .mydiv {
+            width: 100%;
+            height: 200px;
+        }
+
+        .myRow {
+            width: 100%;
+            height: 200px;
+
+        }
+
+        .zingChartCss {
+            min-height: 450px;
+            width: 100%;
+            height: 100%;
+        }
+
+
+
+        .imgdiv {
+            width: 100%;
+            height: 100px;
+        }
+
+        .card-img-top {
+            width: 100%;
+            height: 11.5vw;
+            object-fit: cover;
+        }
+    </style>
+    <script src="https://cdn.zingchart.com/zingchart.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-primary fixed-top sticky-top">
+        <div class="container" id="navId">
+            <div class="navbar-nav">
+                <a href="#" class="nav-item nav-link active"> <i class="fa fa-home"></i> Home</a>
+                <a href="#" class="nav-item nav-link"><i class="fa fa-user"></i> API</a>
+                <a href="#" class="nav-item nav-link"> <i class="fa fa-newspaper-o" aria-hidden="true"></i>
+                    News</a>
+                <a href="#" id = "refreshId" class="nav-item nav-link" v-on:click="refresh()">
+                    <i class="fa fa-refresh" aria-hidden="true"></i>
+                    Updated as On: <b>{{updatedOn}}-(IST)</b>
+                </a>
+                <!-- <div id="spinner1">Refreshing...<i class="fa fa-spinner fa-spin fa-2x fa-fw"></i></div>   -->
+
+                <div id="spinner1" class="spinner-border text-warning" role="status" style="display: none;">
+                </div>
+
+
+
+
+            </div>
+            <form class="form-inline ml-auto">
+                <input type="text" class="form-control mr-sm-2" placeholder="Search">
+                <button type="submit" class="btn btn-outline-light">Search</button>
+            </form>
+        </div>
+    </nav>
+
+    <section class="container">
+        <section class="row">
+            <div class="col-sm">
+                <div class="container">
+                    <hr>
+                    <div class="row" id="genericData">
+                        <div class="col-sm">
+                            <div class="card-deck">
+                                <div class="card shadow text-white bg-info">
+                                    <div class="card-header d-flex justify-content-center">
+                                        <em>Total Active Cases</em>
+                                    </div>
+
+                                    <div class="card-body">
+                                        <div id="totalActive" class="spinner-border text-warning" role="status">
+                                        </div>
+                                        <h1 class="card-title d-flex justify-content-center">{{totalActive}}</h1><span
+                                            class="badge badge-danger float-right">{{activeIncrement}}</span>
+                                    </div>
+
+                                </div>
+                                <div class="card shadow text-white bg-success">
+                                    <div class="card-header d-flex justify-content-center">
+                                        <em>Cured/Discharged</em>
+                                    </div>
+                                    <div class="card-body">
+
+                                        <h1 class="card-title d-flex justify-content-center">{{totalCured}}</h1><span
+                                            class="badge badge-danger float-right">{{curedIncrement}}</span>
+                                        <!-- <p class="card-text">Lorem ipsum dolor si.</p> -->
+                                    </div>
+
+                                </div>
+                                <div class="card text-white bg-danger">
+                                    <div class="card-header d-flex justify-content-center">
+                                        <em>Total Deaths</em>
+                                    </div>
+                                    <div class="card-body">
+
+                                        <h1 class="card-title d-flex justify-content-center">{{totalDeaths}}</h1><span
+                                            class="badge badge-danger float-right">{{deathIncrement}}</span>
+                                        <!-- <p class="card-text">Lorem ipsum dolor si.</p> -->
+                                    </div>
+
+                                </div>
+                                <div class="card text-light bg-dark">
+                                    <div class="card-header d-flex justify-content-center">
+                                        <em>Total Migrated</em>
+                                    </div>
+                                    <div class="card-body">
+
+                                        <h1 class="card-title d-flex justify-content-center">{{totalMigrated}}</h1><span
+                                            class="badge badge-danger float-right">{{migratedIncrement}}</span>
+                                        <!-- <p class="card-text">Lorem ipsum dolor si.</p> -->
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </section>
+    </section>
+    <hr>
+    <div class="container">
+        <!-- <section> -->
+        <div class="content">
+            <div class="row">
+                <!-- <div class="col bg-primary">daily trend (how many increased) chart</div> -->
+                <div class="col-md-12">
+                    <div class="card ">
+                        <div class="card-header " id="cheader">
+                            <h5 class="card-title">States with max cases</h5>
+                            <div class="float-right">
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-secondary dropdown-toggle" type="button"
+                                        id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false">
+                                        Dropdown
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                        <a class="dropdown-item" id="statesActiveCases">Active Cases</a>
+                                        <a class="dropdown-item" id="statesCured">Cured</a>
+                                        <a class="dropdown-item" id="statesDeaths">Deaths</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body " id="statesActiveCasesChart">
+                            <em>Top 10 states which has max no of active cases</em>
+                            <canvas id="topTenStatesActiveCases" width="400" height="100"></canvas>
+                        </div>
+
+                        <div class="card-body " id="statesCuredChart">
+                            <em>Top 10 states which has max cured patients</em>
+                            <canvas id="topTenStatesCasesInCured" width="400" height="100"></canvas>
+                        </div>
+
+                        <div class="card-body " id="statesDeathsChart">
+                            <em>Top 10 states which has max no of deaths</em>
+                            <canvas id="topTenStatesCasesInDeath" width="400" height="100"></canvas>
+                        </div>
+
+                       <!--  <div class="card-footer ">
+                            <hr>
+                            <div class="stats">
+                                <i class="fa fa-history"></i> Updated 3 minutes ago
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <!-- <div class="col bg-primary">daily trend (how many increased) chart</div> -->
+                <div class="col-md-12">
+                    <div class="card ">
+                        <div class="card-header ">
+                            <h5 class="card-title">Daily Trend</h5>
+                            <!-- <p class="card-category">24 Hours performance</p> -->
+                        </div>
+                        <div class="card-body ">
+                            <canvas id="dailyTrendChart" width="400" height="100"></canvas>
+                        </div>
+                        <!-- <div class="card-footer ">
+                            <hr>
+                            <div class="stats">
+                                <i class="fa fa-history"></i> Updated 3 minutes ago
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card ">
+                        <!-- <div class="card-header ">
+                            <h5 class="card-title">India Map</h5>
+                            <p class="card-category">Last Campaign Performance</p>
+                        </div> -->
+                        <div class="card-body ">
+                            <!-- <canvas id="chartEmail"></canvas> -->
+                            <div class="zingChartCss" id="indiaMap">
+                            </div>
+                        </div>
+                        <!-- <div class="card-footer ">
+                            <div class="legend">
+                                <i class="fa fa-circle text-primary"></i> Opened
+                                <i class="fa fa-circle text-warning"></i> Read
+                                <i class="fa fa-circle text-danger"></i> Deleted
+                                <i class="fa fa-circle text-gray"></i> Unopened
+                            </div> 
+                            <hr>
+                            <div class="stats">
+                                <i class="fa fa-calendar"></i> Number of emails sent
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
+
+                <div class="col-md-6" id="newsFeed">
+                    <div class="carousel slide" data-ride="carousel" data-interval="2000">
+                        <div class="carousel-inner">
+                            <div v-for="artice in articles" :class="[artice.active]">
+                                <a :href="[artice.url]" target="_blank">
+                                    <div class="card bg-primary">
+                                        <img :src="artice.urlToImage"
+                                            class="card-img-top img-fluid d-block mx-auto rounded">
+                                        <div class="card-header ">
+                                            <h5 class="card-title">{{artice.title}}</h5>
+                                        </div>
+                                        <div class="card-body ">
+                                            {{artice.description}}
+                                        </div>
+                                        <div class="card-footer ">
+                                            <hr>
+                                            <div class="stats">
+                                                <i class="fa fa-clock-o" aria-hidden="true">{{artice.publishedAt}}</i>
+                                                <i class="float-right">{{artice.source}}</i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card" id="districtData">
+                    <div class="card-header ">
+                        <h5 class="card-title">State Wise report</h5>
+                        <p class="card-category">Of indian states affected from corona</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div v-for="item in items" class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">{{ item.state }}
+                                            <div class="float-right">
+                                                <span class="badge badge-danger">{{item.total}}</span>
+                                            </div>
+                                        </h5>
+                                        <hr>
+                                        <table class="table table-striped table-borderless">
+                                            <tbody>
+                                                <tr scope="row">
+                                                    <th scope="col">Active Cases</th>
+                                                    <td class="float-right">{{item.activeCases}}</th>
+                                                </tr>
+                                                <tr scope="row">
+                                                    <th scope="col">Deaths</th>
+                                                    <td class="float-right">{{item.deaths}}</th>
+                                                </tr>
+                                                <tr scope="row">
+                                                    <th scope="col">Cured</th>
+                                                    <td class="float-right">{{item.cured}}</th>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                    </div>
+                                    <div class="card-body">
+
+                                        <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                            :href="['#tt'+ item.classx]" aria-expanded="false"
+                                            :aria-controls="['tt'+ item.classx]">
+                                            Show
+                                        </button>
+                                        <div class="collapse" :id="['tt'+ item.classx]">
+                                            <div v-for="dist in item.district">
+                                                <table class="table table-striped table-borderless table-warning">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th>{{dist.DistrictName}}</th>
+                                                            <td class="float-right">{{dist.ActiveCases}}</th>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <!-- <div class="card-footer">
+                                        <hr />
+                                        <div class="card-stats">
+                                            <i class="fa fa-check"></i> Data information certified
+                                        </div>
+                                    </div> -->
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- <div class="card-footer">
+                        <hr />
+                        <div class="card-stats">
+                            <i class="fa fa-check"></i> Data information certified
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card ">
+                    <div class="card-header " id="cheader">
+                        <h5 class="card-title">Top 10 Districts in terms of no of active cases</h5>
+                    </div>
+                    <div class="card-body ">
+                        <em>Top 10 Districts which has max no of active cases</em>
+                        <canvas id="topTenDistrictsActiveCases" width="400" height="100"></canvas>
+                    </div>
+                    <!-- <div class="card-footer ">
+                        <hr>
+                        <div class="stats">
+                            <i class="fa fa-history"></i> Updated 3 minutes ago
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <hr>
+    <nav class="navbar navbar-expand-md navbar-dark bg-info fixed-down sticky-top">
+        <div class="container">
+            <div class="navbar-nav">
+                <span class="copyright">
+                    <a href="https://www.linkedin.com/in/ramveer7up/" target="_blank">© Ramveer Singh
+                </span>
+            </div>
+        </div>
+    </nav>
+
+
+
+
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <!-- <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+        crossorigin="anonymous"></script> -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.js"></script>
+    <script src="js/chartJsUtils.js"></script>
+    <script src="js/zingChartUtils.js"></script>
+    <script src="https://cdn.zingchart.com/zingchart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+    <script src="https://unpkg.com/portal-vue"></script>
+
+    <script src="js/dataBindingVue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/js/bootstrap4-toggle.min.js"></script> -->
+    <script src="js/newsFeed.js"></script>
+
+    <script>
+
+        // $(document).ready(function () {
+        //     $('[data-toggle="collapse"]').click(function () {
+        //         alert('hhhhhe');
+        //         $(this).toggleClass("active");
+        //         if ($(this).hasClass("active")) {
+        //             $(this).text("Hide");
+        //         } else {
+        //             $(this).text("Show");
+        //         }
+        //     });
+        // });
+        $(function () {
+            $("#statesActiveCases").click(function () {
+                $('#statesActiveCasesChart').show();
+                $('#statesCuredChart').hide();
+                $('#statesDeathsChart').hide();
+                $('#dropdownMenuButton').text($(this).text());
+            });
+
+            $("#statesCured").click(function () {
+                $('#statesCuredChart').show();
+                $('#statesDeathsChart').hide();
+                $('#statesActiveCasesChart').hide();
+                $('#dropdownMenuButton').text($(this).text());
+
+            });
+            $("#statesDeaths").click(function () {
+                $('#statesDeathsChart').show();
+                $('#statesCuredChart').hide();
+                $('#statesActiveCasesChart').hide();
+                $('#dropdownMenuButton').text($(this).text());
+            });
+
+        });
+        
+        $(document).ready(function () {
+            chartJsUtils.initChartsPages();
+        });
+        $(document).ready(function () {
+            zingChartUtils.initIndiaMap();
+        });
+        $(document).ready(function () {
+            dataBindingVue.getData();
+        });
+        $(document).ready(function () {
+            newsFeed.getNewsData();
+        });
+
+
+
+
+    </script>
+</body>
+
+</html>
