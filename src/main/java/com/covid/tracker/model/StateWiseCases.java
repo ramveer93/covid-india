@@ -40,6 +40,9 @@ public class StateWiseCases implements Serializable {
 	private int totalCases;
 	@Column(name = "html_text", length = 1024)
 	private String htmlText;
+	@Column(name = "phone_number")
+	private String phoneNumber;
+	
 	public long getId() {
 		return id;
 	}
@@ -100,16 +103,17 @@ public class StateWiseCases implements Serializable {
 	public void setHtmlText(String htmlText) {
 		this.htmlText = htmlText;
 	}
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
+	}
 	@Override
 	public String toString() {
 		return "StateWiseCases [id=" + id + ", stateName=" + stateName + ", activeCases=" + activeCases
 				+ ", curedCount=" + curedCount + ", deathCount=" + deathCount + ", updatedOn=" + updatedOn
 				+ ", stateCode=" + stateCode + ", backGroundColor=" + backGroundColor + ", totalCases=" + totalCases
-				+ ", htmlText=" + htmlText + "]";
+				+ ", htmlText=" + htmlText + ", phoneNumber=" + phoneNumber + "]";
 	}
-	
-	
-	
-	
-
 }

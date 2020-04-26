@@ -62,6 +62,7 @@ public class RestClientImpl implements RestClient {
 			map.put(Constants.IS_SUCCESS, String.valueOf(response.isSuccessful()));
 			return map;
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new Exception(e.getMessage());
 		} 
 	}

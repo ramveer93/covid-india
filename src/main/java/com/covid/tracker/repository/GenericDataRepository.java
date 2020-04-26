@@ -18,7 +18,7 @@ public interface GenericDataRepository extends JpaRepository<GenericData, Long> 
 	@Query(value = "select * from generic_data order by updated_on desc limit 1", nativeQuery = true)
 	GenericData findLatestUpdatedDate();
 
-	@Query(value = "select * from generic_data order by updated_on desc limit 10", nativeQuery = true)
+	@Query(value = "select * from (select * from generic_data order by updated_on desc limit 20) as t order by t.updated_on asc", nativeQuery = true)
 	List<GenericData> findDailyTrendForLastTenDays();
 	@Query(value = "select * from generic_data order by updated_on desc limit 2", nativeQuery = true)
 	List<GenericData> findTwoLatest();

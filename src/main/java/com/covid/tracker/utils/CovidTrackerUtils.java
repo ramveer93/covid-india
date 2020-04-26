@@ -1,14 +1,9 @@
 package com.covid.tracker.utils;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -20,9 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -37,11 +30,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
-import org.springframework.util.ResourceUtils;
 
 import com.covid.tracker.model.DistrictList;
 import com.covid.tracker.model.DistrictWiseCasesVo;
@@ -52,7 +43,6 @@ import com.covid.tracker.repository.DistrictRepository;
 import com.covid.tracker.repository.DistrictWiseCasesRepository;
 import com.covid.tracker.repository.GenericDataRepository;
 import com.covid.tracker.repository.StateRepository;
-import com.covid.tracker.repository.ZingChartRepository;
 
 @Component
 public class CovidTrackerUtils {
@@ -72,20 +62,12 @@ public class CovidTrackerUtils {
 
 	@Autowired
 	private DistrictWiseCasesRepository districtWiseCasesRepo;
-
-	@Autowired
 	private static Map<String, String> districtStateMapping = new HashMap<>();
-
-	@Autowired
 	private static Map<String, String> stateCodes = new HashMap<>();
 
 	@Autowired
 	private Environment env;
 
-	@Autowired
-	private ZingChartRepository zingChartRepository;
-	
-	
 
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
@@ -116,31 +98,83 @@ public class CovidTrackerUtils {
 		return true;
 	}
 
-	private void findAndStoreDistrictData() throws IOException {
-		LOGGER.info("utils: findAndStoreDistrictData started district data");
-		String districtPdf = this.genericDataRepo.findLatestDistrictPdfUrl();
-		LOGGER.info("utils: findAndStoreDistrictData pdf from this url: " + districtPdf
-				+ " will be read to get district level data");
+	private void findAndStoreStatePhoneNumbers(String telephonePdf) throws Exception {
+		URL pdfurl = new URL(telephonePdf);
+		InputStream in = pdfurl.openStream();
+		PDDocument pddDocument = PDDocument.load(in);
+		PDFTextStripper textStripper = new PDFTextStripper();
+		String doc = textStripper.getText(pddDocument);
+		String[] lines = doc.split("\\r?\\n");
+		for (int i = 0; i < lines.length; i++) {
+			String line = lines[i];
+			try {
+				if (line.contains(",")) {
+					line = line.split(",")[0];
+				}
+			} catch (Exception e) {
+				LOGGER.error(
+						"Error in parsing telephone string for , " + e.getMessage() + " cause: " + e.getStackTrace());
+			}
 
+			String[] row = line.split("\\s");
+			int strsSize = row.length;
+			String stateName = "";
+			String phoneNumber = "";
+			this.stateRepo.updatePhoneNumber("03192-232102", "ANDAMANNICOBAR");
+			if (strsSize >= 0) {
+				if (isNumber(row[0].trim())) {
+					if (strsSize == 3 && isNumber(row[2].substring(0, 2))) {
+						stateName = row[1].replaceAll("\\\\s", "").toUpperCase();
+						phoneNumber = row[2].trim();
+					} else if (strsSize == 4 && isNumber(row[3].substring(0, 2))) {
+						stateName = (row[1] + row[2]).replaceAll("\\\\s", "").toUpperCase();
+						phoneNumber = row[3].trim();
+					} else if (strsSize >= 5 && isNumber(row[strsSize - 1].substring(0, 2))) {
+						String state = "";
+						for (int j = 0; j < strsSize - 1; j++) {
+							state = state + row[j];
+						}
+						state = state.trim().toUpperCase();
+						stateName = state.replace("5", "");
+						phoneNumber = row[strsSize - 1];
+					}
+					if (stateName.equals("MADHYAPRADESH")) {
+						stateName = "MP";
+					} else if (stateName.equals("TELANGANA")) {
+						stateName = "TELENGANA";
+					} else if (stateName.equals("JAMMU&KASHMIR")) {
+						stateName = "J&K";
+					}
+					this.stateRepo.updatePhoneNumber(phoneNumber, stateName);
+				}
+			}
+
+		}
+
+	}
+
+	private void findAndStoreDistrictData() throws Exception {
+		LOGGER.info("utils: findAndStoreDistrictData started district data");
+		Map<String, String> pdfUrls = getDistrictPdf();
+		String districtPdfUrl = pdfUrls.get("districtPdf");
+		String telephonePdf = pdfUrls.get("telephonePdf");
+		findAndStoreStatePhoneNumbers(telephonePdf);
+		String districtPdf = districtPdfUrl == null ? this.genericDataRepo.findLatestDistrictPdfUrl() : districtPdfUrl;
 		URL pdfurl = new URL(districtPdf);
 		InputStream in = pdfurl.openStream();
 		PDDocument pddDocument = PDDocument.load(in);
 		PDFTextStripper textStripper = new PDFTextStripper();
 		String doc = textStripper.getText(pddDocument);
 		String[] lines = doc.split("\\r?\\n");
-		LOGGER.info("pdf is read successfully know data will be extracted from this file");
 		Date latestUpdatedDate = this.genericDataRepo.findLatestUpdatedDate().getUpdatedOn();
-		LOGGER.info("The latest data is updated as on " + latestUpdatedDate);
-
 		if (districtStateMapping.isEmpty()) {
-			LOGGER.info(
+			LOGGER.debug(
 					"state district mapping map is found empty so syncing this map , there wont be any DB calls here");
 			updateDistrictStateMapping(false);
 		}
-		LOGGER.info("There are total " + lines.length
+		LOGGER.debug("There are total " + lines.length
 				+ " lines in the pdf file, All lines will be read one by one to extract the data");
 		for (int i = 0; i < lines.length; i++) {
-			LOGGER.debug("Reading " + i + "th line of pdf report");
 			String singleLineData = lines[i];
 			if (!singleLineData.startsWith("State")) {
 				String[] singleLine = singleLineData.split("(?<=\\D)(?=\\d)");
@@ -149,26 +183,18 @@ public class CovidTrackerUtils {
 					String districtName = singleLine[0].trim();
 					int casesInDistrict = Integer.parseInt(singleLine[1].trim());
 					String stateName = districtStateMapping.get(districtName.toUpperCase());
-					LOGGER.info("-before---districtName is --------"+districtName+" and stateName is  "+stateName);
-					
-					if(stateName!=null && !(stateName.replaceAll("\\s", "").toUpperCase()).equals(districtName.replaceAll("\\s", "").toUpperCase()) ) {
-						LOGGER.info("  saving ..... statename is "+stateName+" and district name is .."+districtName);
+					if (stateName != null && !(stateName.replaceAll("\\s", "").toUpperCase())
+							.equals(districtName.replaceAll("\\s", "").toUpperCase())) {
 						DistrictWiseCasesVo districtData = new DistrictWiseCasesVo();
-
 						PrimaryKeyForDistrictWiseCases pk = new PrimaryKeyForDistrictWiseCases();
 						pk.setDistrictName(districtName);
 						pk.setStateName(stateName);
 						districtData.setPrimaryKey(pk);
 						districtData.setPositiveCases(casesInDistrict);
 						districtData.setCreatedOn(latestUpdatedDate);
-						LOGGER.debug("Saving this data in district data table  " + districtData.toString());
 						districtWiseCasesRepo.save(districtData);
-						LOGGER.debug(
-								"Successfully saved data for district: " + districtData.getPrimaryKey().getDistrictName());
-						
 					}
-					
-					
+
 				} else if (lengthOfString == 3 && isNumber(singleLine[2].trim())) {
 					String partialDistrict = singleLine[1];
 					String numberInString = (partialDistrict.replaceAll("[^0-9]", "")).trim();
@@ -177,20 +203,49 @@ public class CovidTrackerUtils {
 					String stateName = districtStateMapping.get(districtName.toUpperCase());
 					stateName = (stateName == null ? districtName : stateName);
 					DistrictWiseCasesVo districtData = new DistrictWiseCasesVo();
-
 					PrimaryKeyForDistrictWiseCases pk = new PrimaryKeyForDistrictWiseCases();
+					if (districtName.startsWith("*")) {
+						districtName.replace("*", "");
+						districtName.trim();
+					}
 					pk.setDistrictName(districtName);
 					pk.setStateName(stateName);
 					districtData.setPrimaryKey(pk);
 					districtData.setPositiveCases(casesInDistrict);
 					districtData.setCreatedOn(latestUpdatedDate);
-					LOGGER.debug("Saving this data in district data table  " + districtData.toString());
 					districtWiseCasesRepo.save(districtData);
-					LOGGER.info("Successfully saved data");
 				}
 			}
 		}
-		pddDocument.close();
+		if(pddDocument!=null) {
+			pddDocument.close();
+		}
+		
+	}
+
+	private Map<String, String> getDistrictPdf() {
+		String url = this.env.getProperty("districtPdfSite");
+		try {
+			Document doc = Jsoup.connect(url).get();
+			Elements contentClearfix = doc.getElementsByClass("canvas-menu");
+			Element contentClearFixElement = contentClearfix.get(0);
+			Elements urlElement = contentClearFixElement.getElementsByAttributeValue("target", "_blank");
+			String districtPdf = urlElement.get(0).absUrl("href");
+			Elements colXs12TextCenter = doc.getElementsByClass("col-xs-12 text-center");
+			Elements phoneElements = colXs12TextCenter.get(0).getElementsByAttributeValue("target", "_blank");
+			Elements telephones = phoneElements.get(0).getElementsContainingText("Union Territories");
+			String urlForTelephonePdf = telephones.get(0).absUrl("href");
+			LOGGER.info(" Telephone pdf url .." + urlForTelephonePdf);
+			LOGGER.info(" District pdf url .." + districtPdf);
+			Map<String, String> result = new HashMap<>();
+			result.put("districtPdf", districtPdf);
+			result.put("telephonePdf", urlForTelephonePdf);
+			return result;
+		} catch (Exception e) {
+			LOGGER.error("Error extracting the district pdf url for mohfw " + e.getMessage() + " cause: "
+					+ e.getStackTrace() + " Other error : " + e.getCause());
+			return null;
+		}
 	}
 
 	private void findAndStoreStateData() throws IOException {
@@ -204,52 +259,50 @@ public class CovidTrackerUtils {
 		Elements contentClearfix = root.getElementsByClass("content clearfix");
 		Map<String, StateWiseCases> stateDataMap = new HashMap<>();
 		if (stateCodes.isEmpty()) {
-			LOGGER.info("state code map is empty so filling it with static codes");
-			String msg = updateStateCodes();
-			LOGGER.info("state code updated with msg : " + msg);
+			LOGGER.debug("state code map is empty so filling it with static codes");
+			updateStateCodes();
 		}
 
 //	        Elements updatedLabel = null;
 		for (Element div : contentClearfix) {
-			LOGGER.info("Trying to read the value and label for last updated on");
+			LOGGER.debug("Trying to read the value and label for last updated on");
 			Elements updatedLabel = div
 					.getElementsByClass("field field-name-field-covid-india-as-on field-type-text field-label-above");
 //	        	this for loop is to get the last updated text
 			for (Element updatedOn : updatedLabel) {
 				Elements labels = updatedOn.getElementsByClass("field-label");
-				LOGGER.debug(" label of updated on: " + labels.get(0).text());
 				Elements updatedOnDate = updatedOn.getElementsByClass("field-items");
-				LOGGER.debug("updated date : " + updatedOnDate.get(0).text());
 				String lastUpdatedDate = updatedOnDate.get(0).text();
+				LOGGER.info("Successfully got value of last updated, it is : " + lastUpdatedDate);
 				hashMap.put("LastUpdatedOn", lastUpdatedDate);
 				genericData.setUpdatedOn(parseDate(lastUpdatedDate, GMT_5_30, DD_MMMM_YYYY_HH_MM));
-				LOGGER.info("Successfully got value of last updated, it is : " + lastUpdatedDate);
+				
 			}
 //	        	Total airport passenger screened counts
-			LOGGER.info("Trying to read the value and label for total no of passengers screened on airport");
+			
 			Elements passengerScreenedOnAirports = div.getElementsByClass(
 					"field field-name-field-passenger-screened-format field-type-text field-label-above");
 			for (Element element : passengerScreenedOnAirports) {
 				Elements airportPassengerLabel = element.getElementsByClass("field-label");
-				LOGGER.info("passenger screened on airport label : " + airportPassengerLabel.get(0).text());
+//				LOGGER.info("passenger screened on airport label : " + airportPassengerLabel.get(0).text());
 				Elements airportPassengerCount = element.getElementsByClass("field-items");
-				LOGGER.info("totoal airport passenger count: " + airportPassengerCount.get(0).text());
+//				LOGGER.info("totoal airport passenger count: " + airportPassengerCount.get(0).text());
 				String totalAirportPassengersScreened = (airportPassengerCount.get(0).text()).replaceAll(",", "");
 				hashMap.put("TotalAirportPassengerScreened", totalAirportPassengersScreened);
 				genericData.setPassengerScreenedOnAirport(Integer.parseInt(totalAirportPassengersScreened));
-				LOGGER.info("Successfully got value of total passengers screened on airport, it is : "
-						+ totalAirportPassengersScreened);
+//				LOGGER.info("Successfully got value of total passengers screened on airport, it is : "
+//						+ totalAirportPassengersScreened);
 			}
 
 //	        	active cases
-			LOGGER.info("Trying to read the value and label for total active cases");
+//			LOGGER.info("Trying to read the value and label for total active cases");
 			Elements activeCases = div.getElementsByClass(
 					"field field-name-field-total-active-case field-type-number-integer field-label-above");
 			for (Element element : activeCases) {
 				Elements activeCasesLabel = element.getElementsByClass("field-label");
-				LOGGER.info("activeCasesLabel label : " + activeCasesLabel.get(0).text());
+//				LOGGER.info("activeCasesLabel label : " + activeCasesLabel.get(0).text());
 				Elements activeCasesCount = element.getElementsByClass("field-items");
-				LOGGER.info("activeCasesCount count: " + activeCasesCount.get(0).text());
+//				LOGGER.info("activeCasesCount count: " + activeCasesCount.get(0).text());
 				String totalActiveCases = activeCasesCount.get(0).text();
 				hashMap.put("ActiveCases", totalActiveCases);
 				genericData.setActiveCases(Integer.parseInt(totalActiveCases));
@@ -257,14 +310,14 @@ public class CovidTrackerUtils {
 			}
 
 //	        	cured/Discharged
-			LOGGER.info("Trying to read the value and label for total cured/discharged count");
+//			LOGGER.info("Trying to read the value and label for total cured/discharged count");
 			Elements curedDischarged = div.getElementsByClass(
 					"field field-name-field-total-cured-discharged field-type-number-integer field-label-above");
 			for (Element element : curedDischarged) {
 				Elements curedDischargedLabel = element.getElementsByClass("field-label");
-				LOGGER.debug("curedDischargedLabel label : " + curedDischargedLabel.get(0).text());
+//				LOGGER.debug("curedDischargedLabel label : " + curedDischargedLabel.get(0).text());
 				Elements curedDischargedCount = element.getElementsByClass("field-items");
-				LOGGER.debug("curedDischargedCount count: " + curedDischargedCount.get(0).text());
+//				LOGGER.debug("curedDischargedCount count: " + curedDischargedCount.get(0).text());
 				String totalCured = curedDischargedCount.get(0).text();
 				hashMap.put("Cured", totalCured);
 				genericData.setCured(Integer.parseInt(totalCured));
@@ -272,29 +325,29 @@ public class CovidTrackerUtils {
 			}
 
 //	        	Migrated
-			LOGGER.info("Trying to read the value and label for total migrated count");
+//			LOGGER.info("Trying to read the value and label for total migrated count");
 			Elements migrated = div
 					.getElementsByClass("field field-name-field-migrated-counts field-type-text field-label-above");
 			for (Element element : migrated) {
 				Elements migratedLabel = element.getElementsByClass("field-label");
-				LOGGER.debug("migratedLabel label : " + migratedLabel.get(0).text());
+//				LOGGER.debug("migratedLabel label : " + migratedLabel.get(0).text());
 				Elements migratedCount = element.getElementsByClass("field-items");
-				LOGGER.debug("curedDischargedCount count: " + migratedCount.get(0).text());
+//				LOGGER.debug("curedDischargedCount count: " + migratedCount.get(0).text());
 				String totalMigrated = migratedCount.get(0).text();
 				hashMap.put("Migrated", totalMigrated);
 				genericData.setMigrated(Integer.parseInt(totalMigrated));
-				LOGGER.info("Successfully got value of total migrated , it is : " + totalMigrated);
+//				LOGGER.info("Successfully got value of total migrated , it is : " + totalMigrated);
 			}
 
 //	        	Deaths
-			LOGGER.info("Trying to read the value and label for total deaths count");
+//			LOGGER.info("Trying to read the value and label for total deaths count");
 			Elements deaths = div.getElementsByClass(
 					"field field-name-field-total-death-case field-type-number-integer field-label-above");
 			for (Element element : deaths) {
 				Elements deathsLabel = element.getElementsByClass("field-label");
-				LOGGER.debug("deathsLabel label : " + deathsLabel.get(0).text());
+//				LOGGER.debug("deathsLabel label : " + deathsLabel.get(0).text());
 				Elements deathCount = element.getElementsByClass("field-items");
-				LOGGER.debug("deathCount count: " + deathCount.get(0).text());
+//				LOGGER.debug("deathCount count: " + deathCount.get(0).text());
 				String totalDeaths = deathCount.get(0).text();
 				hashMap.put("Deaths", totalDeaths);
 				genericData.setDeaths(Integer.parseInt(totalDeaths));
@@ -302,26 +355,26 @@ public class CovidTrackerUtils {
 			}
 
 //	        	District reporting
-			LOGGER.info("Trying to read the value for district report pdf");
+//			LOGGER.info("Trying to read the value for district report pdf");
 			Elements districtReporting = div
 					.getElementsByClass("field field-name-field-district-reporting field-type-text field-label-above");
 			for (Element element : districtReporting) {
 				Elements districtReportingLabel = element.getElementsByClass("field-label");
-				LOGGER.debug("districtReportingLabel label : " + districtReportingLabel.get(0).text());
+//				LOGGER.debug("districtReportingLabel label : " + districtReportingLabel.get(0).text());
 				Elements districtReportingUrl = element.getElementsByClass("field-items");
-				LOGGER.debug("districtReportingUrl : " + districtReportingUrl.get(0).text());
+//				LOGGER.debug("districtReportingUrl : " + districtReportingUrl.get(0).text());
 				String districtReport = districtReportingUrl.get(0).text();
 				hashMap.put("DistrictReportPdf", districtReport);
 				genericData.setDistrictWiseUrl(districtReport);
 				LOGGER.info("Successfully got value of district pdf report , it is : " + districtReport);
 			}
 //	        	Top states data
-			LOGGER.info("Trying to read the value for state data");
+//			LOGGER.info("Trying to read the value for state data");
 			Elements stateWise = div.getElementsByClass("field-collection-container clearfix");
 			for (Element element : stateWise) {
 				Elements stateWiseLabel = element.getElementsByClass(
 						"field field-name-field-covid-statewise-data field-type-field-collection field-label-above");
-				LOGGER.debug("stateWiseLabel label : " + stateWiseLabel.get(0).text());
+//				LOGGER.debug("stateWiseLabel label : " + stateWiseLabel.get(0).text());
 				String statesString = stateWiseLabel.get(0).text();
 				String[] statesData = statesString.split("State Name:");
 				LOGGER.info("Now is the dirty logic to get state level data!!!");
@@ -334,15 +387,15 @@ public class CovidTrackerUtils {
 					if (stateIndex != -1 && confirmCasesIndex != -1 && deathIndex != -1) {
 						String stateName = temp.substring(0, stateIndex);
 						stateName = stateName.replaceAll("\\s", "");
-						LOGGER.debug("stateName: " + stateName);
+//						LOGGER.debug("stateName: " + stateName);
 						state.setStateName(stateName.trim().toUpperCase());
 						String confirmedCases = temp.substring(stateIndex, confirmCasesIndex).split(":")[1];
-						LOGGER.debug("Confirmed cases in this state " + confirmedCases);
+//						LOGGER.debug("Confirmed cases in this state " + confirmedCases);
 						state.setActiveCases(Integer.parseInt(confirmedCases.trim()));
 						String curedCases = temp.substring(confirmCasesIndex, deathIndex).split(":")[1];
-						LOGGER.debug("Total cured in this state: " + curedCases);
+//						LOGGER.debug("Total cured in this state: " + curedCases);
 						String deathCases = temp.substring(deathIndex + 1, temp.length()).split(":")[1];
-						LOGGER.debug("Total deaths in this state : " + deathCases);
+//						LOGGER.debug("Total deaths in this state : " + deathCases);
 						state.setDeathCount(Integer.parseInt(deathCases.trim()));
 						state.setCuredCount(Integer.parseInt(curedCases.trim()));
 						state.setUpdatedOn(parseDate(hashMap.get("LastUpdatedOn"), GMT_5_30, DD_MMMM_YYYY_HH_MM));
@@ -351,21 +404,21 @@ public class CovidTrackerUtils {
 						state.setHtmlText(getHtmlStringForZingChart(state));
 //						state.setBackGroundColor(getRandomColor());
 						stateDataMap.put(stateName, state);
-						LOGGER.info("Successfully got data for state : " + state.toString());
+//						LOGGER.info("Successfully got data for state : " + state.toString());
 					}
 				}
 			}
-			LOGGER.debug("Saving generic data to DB table!!");
+//			LOGGER.debug("Saving generic data to DB table!!");
 			genericDataRepo.save(genericData);
-			LOGGER.debug("Saving the generic data in DB table");
-			LOGGER.debug("successfully saved generic data to table ");
+//			LOGGER.debug("Saving the generic data in DB table");
+//			LOGGER.debug("successfully saved generic data to table ");
 			List<StateWiseCases> stateWiseCasesList = setColors(new ArrayList<>(stateDataMap.values()));
 			for (StateWiseCases stateData : stateWiseCasesList) {
 //				StateWiseCases state = stateData.getValue();
-				LOGGER.debug("saving state data to DB for state:  " + stateData);
+//				LOGGER.debug("saving state data to DB for state:  " + stateData);
 				stateRepo.save(stateData);
-				LOGGER.debug("Successfully saved state data for state:  " + stateData);
-				LOGGER.info("state wise data saved successfully Now saving the data for zing Chart");
+//				LOGGER.debug("Successfully saved state data for state:  " + stateData);
+//				LOGGER.info("state wise data saved successfully Now saving the data for zing Chart");
 
 			}
 		}
@@ -373,25 +426,46 @@ public class CovidTrackerUtils {
 
 	private List<StateWiseCases> setColors(List<StateWiseCases> input) {
 		List<StateWiseCases> result = new ArrayList<>();
-
+LOGGER.info("setting color");
 		try {
-			JSONObject jsonObject = loadJSONObject("colors.json");
-			input.sort(Comparator.comparing(StateWiseCases::getTotalCases).reversed()
-					.thenComparing(StateWiseCases::getDeathCount));
+//			JSONObject jsonObject = loadJSONObject("colors.json");
+//			input.sort(Comparator.comparing(StateWiseCases::getTotalCases).reversed()
+//					.thenComparing(StateWiseCases::getDeathCount));
 
 			for (int i = 0; i < input.size(); i++) {
 				StateWiseCases stateWiseCases = input.get(i);
-				stateWiseCases.setBackGroundColor(jsonObject.getString(String.valueOf(i)));
+//				stateWiseCases.setBackGroundColor(jsonObject.getString(String.valueOf(i)));
+				stateWiseCases.setBackGroundColor(setColor(stateWiseCases.getTotalCases()));
 				result.add(stateWiseCases);
 			}
-		} catch (IOException e) {
-			LOGGER.error("Error in set colors...."+e.getMessage());
+		} catch (Exception e) {
+			LOGGER.error("Error in set colors...." + e.getMessage());
 		}
 		return result;
 
 	}
+	
+	private String setColor(long totalCases) {
+		String bgColor = "";
+		if(totalCases>=5000) {
+			bgColor = "#7a0177";
+		}else if(totalCases>=4000 && totalCases<5000) {
+			bgColor = "#ae017e";
+		}else if(totalCases>=3000 && totalCases<4000) {
+			bgColor = "#dd3497";
+		}else if(totalCases>=2000 && totalCases<3000) {
+			bgColor = "#f768a1";
+		}else if(totalCases>=1000 && totalCases<2000) {
+			bgColor = "#fa9fb5";
+		}else if(totalCases>=500 && totalCases<1000) {
+			bgColor = "#fcc5c0";
+		}else if(totalCases<500) {
+			bgColor = "#fde0dd";
+		}
+		return bgColor;
+	}
 
-	private String getRandomColor() {
+	public String getRandomColor() {
 		Random random = new Random();
 		int nextInt = random.nextInt(0xffffff + 1);
 		return String.format("#%06x", nextInt);
@@ -408,19 +482,19 @@ public class CovidTrackerUtils {
 	}
 
 	public Timestamp parseDate(String date, String timeZone, String format) {
-		LOGGER.debug("convert date: " + date + " to sql date");
+//		LOGGER.debug("convert date: " + date + " to sql date");
 		date = timeZone == null ? date : date.substring(0, date.indexOf(timeZone));
-		LOGGER.debug("date without gmt string: " + date);
+//		LOGGER.debug("date without gmt string: " + date);
 		DateFormat converter = new SimpleDateFormat(format);
 		try {
 			Date parsedDate = converter.parse(date);
-			LOGGER.debug("Parsed date: " + parsedDate.toString());
+//			LOGGER.debug("Parsed date: " + parsedDate.toString());
 			Timestamp sqlDate = new java.sql.Timestamp(parsedDate.getTime());
-			LOGGER.debug("Timestamp of this Date!!" + sqlDate);
+//			LOGGER.debug("Timestamp of this Date!!" + sqlDate);
 			return sqlDate;
 		} catch (ParseException e) {
 			e.printStackTrace();
-			LOGGER.error("Error parsing the date : " + e.getMessage());
+			LOGGER.error("Error parsing the date : " + e.getMessage()+" "+e.getCause()+" "+e.getStackTrace());
 		}
 		return null;
 	}
@@ -477,14 +551,13 @@ public class CovidTrackerUtils {
 		String data = "";
 		ClassPathResource cpr = new ClassPathResource(fileName);
 		try {
-		    byte[] bdata = FileCopyUtils.copyToByteArray(cpr.getInputStream());
-		    data = new String(bdata, StandardCharsets.UTF_8);
-		    return new JSONObject(data);
+			byte[] bdata = FileCopyUtils.copyToByteArray(cpr.getInputStream());
+			data = new String(bdata, StandardCharsets.UTF_8);
+			return new JSONObject(data);
 		} catch (IOException e) {
-		   LOGGER.error("Error loading the json file "+e.getMessage());
+			LOGGER.error("Error loading the json file " + e.getMessage());
 		}
 		return null;
-		
 
 	}
 }

@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.covid.tracker.model.StateWiseCases;
 
@@ -25,5 +28,10 @@ public interface StateRepository extends JpaRepository<StateWiseCases, Long> {
 	List<Object> getJoinData();
 	
 	List<StateWiseCases> findAll();
+	
+	@Modifying
+	@Transactional
+	@Query(" update StateWiseCases sd set sd.phoneNumber = :phoneNumber where sd.stateName = :stateName")
+	int updatePhoneNumber(@Param("phoneNumber") String phoneNumber, @Param("stateName") String stateName);
 
 }

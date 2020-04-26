@@ -58,7 +58,75 @@ zingChartUtils = {
                             zooming: true // turn of zooming. Doesn't work with bounding box
                         }
                     }
-                ]
+                ],
+                "legend":{
+                    "toggle-action": "none",
+                    "vertical-align": "top",
+                    "align": "right",
+                    "border-width":0,
+                    "background-color":"none",
+                    "item": {
+                      "font-size":8
+                    }
+                  },
+                  "series": [ // for legend items
+                      {
+                        "legend-item" :{
+                          "text":" >=5k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#7a0177",
+                        }
+                      },
+                      {
+                        "legend-item" :{
+                          "text":"4k - 5k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#ae017e",
+                        }
+                      },
+                      {
+                        "legend-item" :{
+                          "text":"3k - 4k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#dd3497",
+                        }
+                      },
+                      {
+                        "legend-item" :{
+                          "text":"2k - 3k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#f768a1",
+                        }
+                      },
+                      {
+                        "legend-item" :{
+                          "text":"1k - 2k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#fa9fb5",
+                        }
+                      },
+                      {
+                        "legend-item" :{
+                          "text":"500 - 1k"
+                        },
+                        "legend-marker": {
+                          "background-color": "#fcc5c0",
+                        }
+                      },
+                      {
+                          "legend-item" :{
+                            "text":"< 500"
+                          },
+                          "legend-marker": {
+                            "background-color": "#fde0dd",
+                          }
+                        }
+                  ]
             }
 
             zingchart.loadModules('maps,maps-ind');
@@ -78,10 +146,15 @@ zingChartUtils = {
 
     },
     getStateJsonData: function (callback) {
-        return fetch('/v1/tracker/stateData?zinkChartData=true')
+        return fetch('/v1/tracker/stateData?zinkChartData=true',{
+        	method: 'GET',
+        	headers:{
+        		'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYW12ZWVyQWRtaW45MzIiLCJleHAiOjE2NTkyOTg1ODEsImlhdCI6MTU4NzI5ODU4MX0.N75CGJchg4J3uR6k9Y2JnjALlScK4mp3TOOPcTXBG8g'
+        	}
+        })
             .then((response) => {
                 return response.json().then((data) => {
-                    console.log('data...',data);
+//                    console.log('data...',data);
                     return data;
                 }).catch((err) => {
                     console.log(err);

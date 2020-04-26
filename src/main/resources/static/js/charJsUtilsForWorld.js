@@ -1,4 +1,4 @@
-chartJsUtils = {
+chartJsUtilsForWorld = {
   getRandomColor: function () {
     var letters = '0123456789ABCDEF'.split('');
     var color = '#';
@@ -9,9 +9,15 @@ chartJsUtils = {
     return color;
   },
 
-  initChartsPages: function () {
-
-    this.getChartData().then((chartData) => {
+  initChartsPages: function (country,flag) {
+//   console.log('-----------country-----',country);
+    this.getChartData(country,flag).then((chartData) => {
+    	$("#dailyTrendSpinner").hide();
+    	$('#worldTrendSpinnerDropDown').hide();
+//    	$('#worldTopTenCountriesActiveSpinner').hide();
+//    	$('#worldTopTenCountriesCuredSpinner').hide();
+//    	$('#worldTopTenCountriesDeathsSpinner').hide();
+    	
 //    console.log('chart data........',chartData);
       chartColor = "#FFFFFF";
 
@@ -46,33 +52,33 @@ chartJsUtils = {
           data: [10, 20, 30, 40, 50, 60, 70, 89, 120, 123]
         }]
       };
-      ctx = document.getElementById("topTenStatesActiveCases").getContext("2d");
+      ctx = document.getElementById("topTenCountriesActiveCases").getContext("2d");
       myBarChart = new Chart(ctx, {
         type: 'bar',
-        data: chartData.topTenStateBar.Active,
+        data: chartData.topTenCountryBar.Active,
         options: barChartOptions
       });
 
-      ctx = document.getElementById("topTenStatesCasesInCured").getContext("2d");
+      ctx = document.getElementById("topTenCountriesCasesInCured").getContext("2d");
       myBarChart = new Chart(ctx, {
         type: 'bar',
-        data: chartData.topTenStateBar.Cured,
+        data: chartData.topTenCountryBar.Cured,
         options: barChartOptions
       });
 
-      ctx = document.getElementById("topTenStatesCasesInDeath").getContext("2d");
+      ctx = document.getElementById("topTenCountriesCasesInDeath").getContext("2d");
       myBarChart = new Chart(ctx, {
         type: 'bar',
-        data: chartData.topTenStateBar.Deaths,
+        data: chartData.topTenCountryBar.Deaths,
         options: barChartOptions
       });
 
-      ctx = document.getElementById("topTenDistrictsActiveCases").getContext("2d");
-      myBarChart = new Chart(ctx, {
-        type: 'bar',
-        data: chartData.topTenDistrictBar.Active,
-        options: barChartOptions
-      });
+//      ctx = document.getElementById("topTenDistrictsActiveCases").getContext("2d");
+//      myBarChart = new Chart(ctx, {
+//        type: 'bar',
+//        data: chartData.topTenDistrictBar.Active,
+//        options: barChartOptions
+//      });
     });
 
 
@@ -297,9 +303,9 @@ chartJsUtils = {
     return barData;
   },
 
-  getChartData: function (callback) {
-    var url = "/v1/tracker/lineAndBarData";
-//    console.log('url to be hit....', url);
+  getChartData: function (country,flag, callback) {
+	var url = "/v1/tracker/lineAndBarDataForCountry?countryId="+country+"&dropDownValue="+flag;;
+//    console.log('lineAndBarDataForCountry..', url);
     return fetch(url,{
     	method: 'GET',
     	headers:{

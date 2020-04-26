@@ -1,6 +1,9 @@
 package com.covid.tracker.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -8,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,20 +22,21 @@ import org.springframework.stereotype.Service;
 import com.covid.tracker.httpClient.Constants;
 import com.covid.tracker.httpClient.HttpRequest;
 import com.covid.tracker.httpClient.RestClient;
-import com.covid.tracker.model.DistrictResult;
 import com.covid.tracker.model.DistrictWiseCasesVo;
 import com.covid.tracker.model.GenericData;
 import com.covid.tracker.model.NewsFeedData;
-import com.covid.tracker.model.PrimaryKeyForDistrictWiseCases;
+import com.covid.tracker.model.PrimaryKeyForWorldTrend;
 import com.covid.tracker.model.StateWiseCases;
+import com.covid.tracker.model.WorldCountryTrend;
+import com.covid.tracker.model.WorldData;
 import com.covid.tracker.repository.DistrictWiseCasesRepository;
 import com.covid.tracker.repository.GenericDataRepository;
 import com.covid.tracker.repository.NewsFeedDataRepository;
 import com.covid.tracker.repository.StateRepository;
+import com.covid.tracker.repository.WorldGenericRepository;
+import com.covid.tracker.repository.WorldTrendRepository;
 import com.covid.tracker.utils.CovidTrackerUtils;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
+import com.covid.tracker.utils.WorldDataUtils;
 
 @Service
 public class CovidTrackerService {
@@ -53,8 +58,13 @@ public class CovidTrackerService {
 	private GenericDataRepository genericDataRepo;
 	@Autowired
 	private DistrictWiseCasesRepository districtWiseCasesRepository;
-	@Autowired
 	private static Map<String, String> stateCodes = new HashMap<>();
+	@Autowired
+	private WorldDataUtils worldDataUtils;
+	@Autowired
+	private WorldGenericRepository worldGenericRepository;
+	@Autowired
+	private WorldTrendRepository worldTrendRepository;
 
 	public String refreshDataFromWeb() {
 		LOGGER.info("service started syncing data from web");
@@ -114,24 +124,26 @@ public class CovidTrackerService {
 			Map<String, String> resultMap;
 			resultMap = this.restClient.executeExternalApi(request);
 			String response = resultMap.get(Constants.RESPONSE_STR);
-			System.out.println("response from news: " + response);
 			boolean isSuccess = Boolean.parseBoolean(resultMap.get(Constants.IS_SUCCESS));
 			JSONObject object = new JSONObject(response);
 			JSONArray array = new JSONArray();
 			array = object.getJSONArray("articles");
 			if (isSuccess && array.length() > 0) {
-				LOGGER.info(
-						"getNewsFeedData data returned from the news api so manipulating this data and storing in db and return to client");
 				JSONArray resultArticles = new JSONArray();
 				for (int i = 0; i < array.length(); i++) {
 					JSONObject obj = array.getJSONObject(i);
 					if (i <= 10) {
 						if (obj.get("author") != JSONObject.NULL && obj.get("publishedAt") != JSONObject.NULL
 								&& obj.get("description") != JSONObject.NULL && obj.get("title") != JSONObject.NULL
-								&& obj.get("url") != JSONObject.NULL && obj.get("urlToImage") != JSONObject.NULL
-								&& obj.get("source") != JSONObject.NULL) {
+								&& obj.get("url") != JSONObject.NULL && obj.get("source") != JSONObject.NULL) {
+
+							String urlToimg;
+							if (obj.get("urlToImage") != JSONObject.NULL) {
+								urlToimg = obj.getString("urlToImage");
+							}else {
+								 urlToimg = "https://picsum.photos/200/300/?blur";
+							}
 							JSONObject temp = new JSONObject();
-							System.out.println("obj--------" + obj.toString());
 							NewsFeedData newsFeed = new NewsFeedData();
 							Instant instant = Instant.parse(obj.getString("publishedAt"));
 							Date parsedPublishedDate = Date.from(instant);
@@ -140,8 +152,7 @@ public class CovidTrackerService {
 							newsFeed.setDescription(obj.getString("description"));
 							newsFeed.setTitle(obj.getString("title"));
 							newsFeed.setUrl(obj.getString("url"));
-							newsFeed.setUrlToImage(obj.getString("urlToImage"));
-
+							newsFeed.setUrlToImage(urlToimg);
 							JSONObject source = obj.getJSONObject("source");
 							newsFeed.setSourceName(source.getString("name"));
 							this.newsFeedDataRepo.save(newsFeed);
@@ -150,32 +161,19 @@ public class CovidTrackerService {
 							temp.put("description", newsFeed.getDescription());
 							temp.put("title", newsFeed.getTitle());
 							temp.put("url", newsFeed.getUrl());
-//							temp.put("active", newsFeed.getActive());
 							temp.put("source", newsFeed.getSourceName());
 							temp.put("urlToImage", newsFeed.getUrlToImage());
-//							if(temp.getString("active").equals("carousel-item active")) {
 							resultArticles.put(temp);
-//							}else if(temp.getString("active").equals("carousel-item")) {
-//								resultArticles.put(temp);
-//							}
-							LOGGER.info("Successfully saved the news feed data to DB");
 						}
-
-					} else {
-						LOGGER.info("getNewsFeedData: skipping the results for performance improvement");
 					}
 				}
 				JSONObject result = new JSONObject();
 				result.put("articles", resultArticles);
-//				result.put("totalResults", Integer.parseInt(object.get("totalResults").toString()));
-				LOGGER.info("Successfully returned the newsFeed data json from service to controller");
 				return result;
-
 			} else {
 				LOGGER.error("Some error getting data from news api so returning the DB data");
 				return this.getNewsFromDb();
 			}
-
 		} catch (Exception e) {
 			LOGGER.error(
 					"Some error getting data from news api so returning the DB data, the error is : " + e.getMessage());
@@ -190,22 +188,7 @@ public class CovidTrackerService {
 		JSONObject result = new JSONObject();
 		JSONArray resultArray = new JSONArray();
 		resultList.forEach((newsFeedObj) -> {
-//			first get the element which has active as carousel-item active
-
-////			if(newsFeedObj.getActive().equals("carousel-item active")) {
-//				JSONObject firstJsonObj = new JSONObject();
-//				firstJsonObj.put("active", newsFeedObj.getActive());
-//				firstJsonObj.put("author", newsFeedObj.getAuthorName());
-//				firstJsonObj.put("description", newsFeedObj.getDescription());
-//				firstJsonObj.put("publishedAt", newsFeedObj.getPublishedAt());
-//				firstJsonObj.put("source", newsFeedObj.getSourceName());
-//				firstJsonObj.put("url", newsFeedObj.getUrl());
-//				firstJsonObj.put("urlToImage", newsFeedObj.getUrlToImage());
-//				firstJsonObj.put("title", newsFeedObj.getTitle());
-//				resultArray.put(0,firstJsonObj);
-////			}else if(newsFeedObj.getActive().equals("carousel-item")) {
 			JSONObject jsonObject = new JSONObject();
-//				jsonObject.put("active", newsFeedObj.getActive());
 			jsonObject.put("author", newsFeedObj.getAuthorName());
 			jsonObject.put("description", newsFeedObj.getDescription());
 			jsonObject.put("publishedAt", newsFeedObj.getPublishedAt());
@@ -214,7 +197,6 @@ public class CovidTrackerService {
 			jsonObject.put("urlToImage", newsFeedObj.getUrlToImage());
 			jsonObject.put("title", newsFeedObj.getTitle());
 			resultArray.put(jsonObject);
-
 		});
 		result.put("articles", resultArray);
 		LOGGER.info("Successfully returned the newsFeed data json from service vie DB");
@@ -224,7 +206,7 @@ public class CovidTrackerService {
 	public JSONObject getLatestGenericData() {
 		GenericData genericData = genericDataRepo.findLatestUpdatedDate();
 		JSONObject resultJson = new JSONObject();
-		if(genericData!=null) {
+		if (genericData != null) {
 			resultJson.put("totalActive", genericData.getActiveCases());
 			resultJson.put("totalCured", genericData.getCured());
 			resultJson.put("totalDeaths", genericData.getDeaths());
@@ -232,18 +214,18 @@ public class CovidTrackerService {
 			resultJson.put("updatedOn", genericData.getUpdatedOn());
 			List<GenericData> genericDataList = genericDataRepo.findTwoLatest();
 			if (genericDataList.size() == 2) {
-				int active = 
-						 (genericDataList.get(0).getActiveCases()) - (genericDataList.get(1).getActiveCases());
-				String activeIncrement = (active<0?"-"+String.valueOf(active):"+"+String.valueOf(active));
+				int active = (genericDataList.get(0).getActiveCases()) - (genericDataList.get(1).getActiveCases());
+				String activeIncrement = (active < 0 ? "-" + String.valueOf(active) : "+" + String.valueOf(active));
 				int cured = (genericDataList.get(0).getCured()) - (genericDataList.get(1).getCured());
-				String curedIncrement = (cured<0?"-"+String.valueOf(cured):"+"+String.valueOf(cured));
-				
+				String curedIncrement = (cured < 0 ? "-" + String.valueOf(cured) : "+" + String.valueOf(cured));
+
 				int death = (genericDataList.get(0).getDeaths()) - (genericDataList.get(1).getDeaths());
-				String deathIncrement = (death<0?"-"+String.valueOf(death):"+"+String.valueOf(death));
-				
+				String deathIncrement = (death < 0 ? "-" + String.valueOf(death) : "+" + String.valueOf(death));
+
 				int migrated = (genericDataList.get(0).getMigrated()) - (genericDataList.get(1).getMigrated());
-				String migratedIncrement = (migrated<0?"-"+String.valueOf(migrated):"+"+String.valueOf(migrated));
-				
+				String migratedIncrement = (migrated < 0 ? "-" + String.valueOf(migrated)
+						: "+" + String.valueOf(migrated));
+
 				resultJson.put("activeIncrement", activeIncrement);
 				resultJson.put("curedIncrement", curedIncrement);
 				resultJson.put("deathIncrement", deathIncrement);
@@ -518,6 +500,9 @@ public class CovidTrackerService {
 
 		List<StateWiseCases> allStates = stateRepo.findAll();
 		List<DistrictWiseCasesVo> allDistricts = districtWiseCasesRepository.findAll();
+		allStates.sort(Comparator.comparing(StateWiseCases::getTotalCases).reversed());
+		allDistricts.sort(Comparator.comparing(DistrictWiseCasesVo::getPositiveCases).reversed());
+
 		JSONArray result = new JSONArray();
 
 		for (int i = 0; i < allStates.size(); i++) {
@@ -529,17 +514,15 @@ public class CovidTrackerService {
 
 				DistrictWiseCasesVo district = allDistricts.get(j);
 				String expectedDistCode = stateCodes.get(state.getStateName());
-				System.out.println("-----expectedDistCode----"+expectedDistCode+" for state.getStateName()"+state.getStateName());
-				System.out.println("district.getPrimaryKey().getStateName()........."+district.getPrimaryKey().getStateName());
-				if (expectedDistCode!=null && expectedDistCode.equals(district.getPrimaryKey().getStateName())
+				if (expectedDistCode != null && expectedDistCode.equals(district.getPrimaryKey().getStateName())
 
 				) {
-
-					stateObj.put("state", district.getPrimaryKey().getStateName());
+					stateObj.put("state", capetalizeFirstChar(district.getPrimaryKey().getStateName()));
 					stateObj.put("activeCases", state.getActiveCases());
 					stateObj.put("cured", state.getCuredCount());
 					stateObj.put("deaths", state.getDeathCount());
 					stateObj.put("total", state.getTotalCases());
+					stateObj.put("phoneNumber", state.getPhoneNumber());
 					if (state.getStateName().equals("J&K")) {
 						stateObj.put("classx", "JK");
 					} else {
@@ -548,7 +531,14 @@ public class CovidTrackerService {
 
 					JSONObject districtJson = new JSONObject();
 					districtJson.put("ActiveCases", district.getPositiveCases());
-					districtJson.put("DistrictName", district.getPrimaryKey().getDistrictName());
+					String districtName = district.getPrimaryKey().getDistrictName();
+					if (districtName.startsWith("(") && districtName.endsWith(")")) {
+						districtName = districtName.replace("(", "");
+						districtName = districtName.replace(")", "");
+						districtName = districtName.trim();
+					}
+
+					districtJson.put("DistrictName", capetalizeFirstChar(districtName));
 					districtArray.put(districtJson);
 				}
 			}
@@ -560,6 +550,15 @@ public class CovidTrackerService {
 		}
 
 		return result;
+
+	}
+
+	private String capetalizeFirstChar(String input) {
+		input = input.toLowerCase();
+		if (input.length() >= 2) {
+			return input.substring(0, 1).toUpperCase() + input.substring(1);
+		}
+		return input;
 
 	}
 
@@ -575,8 +574,229 @@ public class CovidTrackerService {
 				stateCodes.put(state, dist);
 			}
 		} catch (Exception e) {
-			msg = e.getMessage();
+			msg = e.getMessage() + " " + e.getCause() + " " + e.getStackTrace();
 		}
 		return msg;
+	}
+
+	/**
+	 * this is to update the world generic data for earth
+	 * 
+	 * @param countryId
+	 * @param requestFromUi
+	 * @return
+	 * @throws Exception
+	 */
+	public JSONObject getWorldGenericData(String countryId) throws Exception {
+		LOGGER.info("Getting data for earth");
+		JSONObject result = new JSONObject();
+		List<WorldData> worldDataList = this.worldGenericRepository.findLatestForCountry(countryId);
+
+		if (worldDataList.size() > 0) {
+			WorldData worldDataFromDb = worldDataList.get(0);
+			result.put("id", worldDataFromDb.getId());
+			result.put("alpha3code", worldDataFromDb.getAlpha3code());
+			result.put("dataSource", worldDataFromDb.getDataSource());
+			result.put("name", worldDataFromDb.getName());
+			result.put("cases", worldDataFromDb.getConfirmed());
+			result.put("deaths", worldDataFromDb.getDeaths());
+			result.put("recovered", worldDataFromDb.getRecovered());
+			result.put("date", worldDataFromDb.getDate());
+			return result;
+		} else {
+			LOGGER.info("No data found in db for earth");
+			return result;
+		}
+
+	}
+
+	/**
+	 * This method is to syc the DB only , not to be returned to client Or this can
+	 * work as refresh method to refresh the data of the world
+	 * 
+	 * @param requestFromUi
+	 * @return
+	 * @throws Exception
+	 */
+	public JSONObject refreshWorldData() throws Exception {
+		JSONObject result = new JSONObject();
+
+		try {
+			List<WorldData> worldObjectFromDb = this.worldGenericRepository.findAll();
+			JSONObject worldDataFromApi = this.worldDataUtils.getWorldData();
+
+			long totalActiveCase = 0;
+			long totalDeaths = 0;
+			long totalRecovered = 0;
+//			worldObjectFromDb.forEach((object) -> {
+			for (WorldData object : worldObjectFromDb) {
+				LOGGER.info("Trying to save for country name : " + object.getName());
+				try {
+					String countryNameFromDb = object.getName();
+					if (countryNameFromDb.equals("The Bahamas")) {
+						countryNameFromDb = "Bahamas";
+					} else if (countryNameFromDb.equals("The Gambia")) {
+						countryNameFromDb = "Gambia";
+					} else if (countryNameFromDb.equals("United States of America")) {
+						countryNameFromDb = "US";
+					} else if (countryNameFromDb.equals("Brunei Darussalam")) {
+						countryNameFromDb = "Brunei";
+					} else if (countryNameFromDb.equals("Czech Republic")) {
+						countryNameFromDb = "Czechia";
+					} else if (countryNameFromDb.equals("Cote dIvoire")) {
+						countryNameFromDb = "Cote d'Ivoire";
+					} else if (countryNameFromDb.equals("Taiwan")) {
+						countryNameFromDb = "Taiwan*";
+					} else if (countryNameFromDb.equals("Democratic Republic of the Congo")) {
+						countryNameFromDb = "Congo (Kinshasa)";
+					} else if (countryNameFromDb.equals("Republic of the Congo")) {
+						countryNameFromDb = "Congo (Brazzaville)";
+					} else if (countryNameFromDb.equals("Syrian Arab Republic")) {
+						countryNameFromDb = "Syria";
+					} else if (countryNameFromDb.equals("Macedonia")) {
+						countryNameFromDb = "North Macedonia";
+					} else if (countryNameFromDb.equals("Myanmar")) {
+						countryNameFromDb = "Burma";
+					} else if (countryNameFromDb.equals("South Korea")) {
+						countryNameFromDb = "Korea, South";
+					}
+					JSONArray singleCountryArray = worldDataFromApi.getJSONArray(countryNameFromDb);
+					LOGGER.info("Entries from external sources for country : " + countryNameFromDb + " are : "
+							+ singleCountryArray.length());
+					JSONObject singleResultJsonObj = singleCountryArray.getJSONObject(singleCountryArray.length() - 1);
+					object.setConfirmed(singleResultJsonObj.getLong("confirmed"));
+					object.setDeaths(singleResultJsonObj.getLong("deaths"));
+					object.setRecovered(singleResultJsonObj.getLong("recovered"));
+					object.setDate(singleResultJsonObj.getString("date"));
+					object.setHtmlText(this.worldDataUtils.getHtmlStringForZingChart(object));
+					object.setBackgroundColor(this.worldDataUtils.setColorForWorld(object.getConfirmed()+object.getDeaths()+object.getRecovered()));
+					if (!result.has("date")) {
+						result.put("latestDate", object.getDate());
+					}
+					this.worldGenericRepository.save(object);
+
+					totalActiveCase += object.getConfirmed();
+					totalDeaths += object.getDeaths();
+					totalRecovered += object.getRecovered();
+
+					LOGGER.info("Successfully updated records for country:" + countryNameFromDb);
+					/**
+					 * Refresh the world trend data ----
+					 */
+					refreshWorldTrendData(object.getId(), singleCountryArray);
+					LOGGER.info("Successfully updated trend for country:" + countryNameFromDb);
+				} catch (Exception ex) {
+					LOGGER.error("Exception in getting data for country: " + object.getName());
+				}
+			}
+			/**
+			 * save for earth also
+			 */
+			LOGGER.info("Successfully updated for all country now trying to insert for earth");
+			WorldData earth = new WorldData();
+			earth.setId("earth");
+			earth.setAlpha3code("earth");
+			earth.setConfirmed(totalActiveCase);
+			earth.setDeaths(totalDeaths);
+			earth.setRecovered(totalRecovered);
+			earth.setDate(result.getString("latestDate"));
+			earth.setName("earth");
+			this.worldGenericRepository.save(earth);
+			LOGGER.info("Successfully updated records for earth also");
+		} catch (Exception e) {
+			throw new Exception(e.getMessage());
+		}
+		result.put("message", "Successfully refreshed data for countries");
+		result.put("status", "Ok");
+		return result;
+	}
+
+	private JSONArray sortJsonArrayBasedOnDate(JSONArray unsortedJsonArray) {
+		JSONArray sortedJsonArray = new JSONArray();
+		List<JSONObject> jsonValues = new ArrayList<JSONObject>();
+		for (int i = 0; i < unsortedJsonArray.length(); i++) {
+			jsonValues.add(unsortedJsonArray.getJSONObject(i));
+		}
+		Collections.sort(jsonValues, new Comparator<JSONObject>() {
+			// You can change "Name" with "ID" if you want to sort by ID
+			private static final String KEY_NAME = "date";
+
+			@Override
+			public int compare(JSONObject a, JSONObject b) {
+				String valA = new String();
+				String valB = new String();
+
+				try {
+					valA = (String) a.get(KEY_NAME);
+					valB = (String) b.get(KEY_NAME);
+				} catch (JSONException e) {
+					LOGGER.error("Error sorting json array values: " + e.getMessage());
+				}
+
+				return valB.compareTo(valA);
+				// if you want to change the sort order, simply use the following:
+				// return -valA.compareTo(valB);
+			}
+		});
+
+		for (int i = 0; i < unsortedJsonArray.length(); i++) {
+			sortedJsonArray.put(jsonValues.get(i));
+		}
+		return sortedJsonArray;
+
+	}
+
+	public JSONObject getWorldDataForZinkChart() {
+		return this.worldDataUtils.getWorldDataForZinkChart();
+	}
+
+	public JSONObject getWorldLineAndBarData() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void refreshWorldTrendData(String countryName, JSONArray singleCountryArray) throws Exception {
+		try {
+			int recordCounts = singleCountryArray.length();
+			int terminateIndex = recordCounts >= 15 ? (recordCounts - 15) : 0;
+
+			for (int i = recordCounts - 1; i >= terminateIndex; i--) {
+				JSONObject singleObject = singleCountryArray.getJSONObject(i);
+				WorldCountryTrend trend = new WorldCountryTrend();
+				PrimaryKeyForWorldTrend pk = new PrimaryKeyForWorldTrend();
+				pk.setCountryId(countryName);
+				pk.setDate(singleObject.getString("date"));
+				trend.setPk(pk);
+				trend.setConfirmed(singleObject.getLong("confirmed"));
+				trend.setDeaths(singleObject.getLong("deaths"));
+				trend.setRecovered(singleObject.getLong("recovered"));
+				worldTrendRepository.save(trend);
+			}
+		} catch (Exception e) {
+			LOGGER.error("Exception saving world trend for " + countryName);
+			throw new Exception(e.getMessage());
+		}
+	}
+
+//	public JSONObject refreshLineBarData(String countryId) throws Exception {
+//
+//		JSONObject fromApi = this.worldDataUtils.getWorldTrendData(countryId);
+//
+//		return fromApi;
+//	}
+
+	public JSONObject getLineAndBarDataForCountry(String countryId) {
+		return this.worldDataUtils.getLineAndBarDataForWorld(countryId);
+	}
+
+	public JSONArray getCountryList() {
+		List<String> result = this.worldGenericRepository.getCountryList();
+		JSONArray resultArray = new JSONArray();
+		result.forEach((obj) -> {
+			JSONObject resultObj = new JSONObject();
+			resultObj.put("country", obj);
+			resultArray.put(resultObj);
+		});
+		return resultArray;
 	}
 }

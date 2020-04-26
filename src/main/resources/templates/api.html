@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet"
+	href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+	integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+	crossorigin="anonymous">
+<!-- Font Awesome CSS -->
+<link rel="stylesheet"
+	href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+	integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN"
+	crossorigin="anonymous">
+<link href="css/paper-dashboard.css?v=2.0.1" rel="stylesheet" />
+<!-- <link href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/css/bootstrap4-toggle.min.css" rel="stylesheet"> -->
+
+
+
+
+<title>Covid-19</title>
+<style type="text/css">
+/* #spinner {
+            visibility: hidden;
+        }
+
+        body.busy .spinner {
+            visibility: visible !important;
+        } */
+.bs-example {
+	/* margin: 20px; */
+	width: 100%;
+	height: 200px;
+}
+
+.mydiv {
+	width: 100%;
+	height: 200px;
+}
+
+.myRow {
+	width: 100%;
+	height: 200px;
+}
+
+.zingChartCss {
+	min-height: 450px;
+	width: 100%;
+	height: 100%;
+}
+
+.imgdiv {
+	width: 100%;
+	height: 100px;
+}
+
+.card-img-top {
+	width: 100%;
+	height: 11.5vw;
+	object-fit: cover;
+}
+</style>
+<script src="https://cdn.zingchart.com/zingchart.min.js"></script>
+</head>
+
+<body>
+	<nav
+		class="navbar navbar-expand-md navbar-dark bg-primary fixed-top sticky-top">
+		<div class="container" id="navId">
+			<div class="navbar-nav">
+				<a href="/" class="nav-item nav-link active"> <i
+					class="fa fa-home"></i> Home
+				</a> 
+				<a href="/api" class="nav-item nav-link"><i class="fa fa-user"></i>
+					API</a> <a href="/world" class="nav-item nav-link"> <i
+					class="fa fa-globe" aria-hidden="true"></i>World
+				</a>
+				<!-- <a href="#" id="refreshId" class="nav-item nav-link"
+					v-on:click="refresh()"> <i class="fa fa-refresh"
+					aria-hidden="true"></i> Updated as On: <b>{{updatedOn}}-(IST)</b>
+				</a> -->
+				<!-- <div id="spinner1">Refreshing...<i class="fa fa-spinner fa-spin fa-2x fa-fw"></i></div>   -->
+
+				<div id="spinner1" class="spinner-border text-warning" role="status"
+					style="display: none;"></div>
+			</div>
+			<!--   <form class="form-inline ml-auto">
+                <input type="text" class="form-control mr-sm-2" placeholder="Search">
+                <button type="submit" class="btn btn-outline-light">Search</button>
+            </form> -->
+		</div>
+	</nav>
+	<div class="container">
+		<!-- <section> -->
+		<div class="content">
+			<div class="row">
+
+				<div class="col-md-12">
+					<div class="card ">
+						<div class="card-header " id="cheader">
+							<h5 class="card-title">API Details</h5>
+						</div>
+						<div class="card-body">
+							<div class="accordion md-accordion accordion-blocks"
+								id="accordionExample" role="tablist" aria-multiselectable="true">
+								<!-- first  -->
+								<div class="card">
+									<div class="card-header text-white" id="headingOne" role="tab">
+										<!-- 	<h4 class="mb-0"> -->
+										<!-- 	<div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-primary  btn-block dropdown-toggle text-left "
+											aria-haspopup="true" aria-expanded="true"
+											data-toggle="collapse" data-target="#collapseOne">
+											<span class="badge badge-danger">GET </span> District Data
+										</button>
+										<!-- </div> -->
+
+
+									</div>
+									<div id="collapseOne" class="collapse"
+										aria-labelledby="headingOne" data-parent="#accordionExample">
+										<div class="card-body">
+											<!-- <p>
+												HTML stands for HyperText Markup Language. HTML is the
+												standard markup language for describing the structure of web
+												pages. <a
+													href="https://www.tutorialrepublic.com/html-tutorial/"
+													target="_blank">Learn more.</a>
+											</p> -->
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/districtData
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control" id="districtDataJson"
+																		cols="30" rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+									<!-- 	</div> -->
+									<!-- second -->
+									<!-- <div class="card"> -->
+									<div class="card-header" id="headingTwo" role="tab">
+										<!-- <h2 class="mb-0"> -->
+										<!-- <div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-secondary btn-block dropdown-toggle text-left"
+											data-toggle="collapse" data-target="#collapseTwo">
+											<span class="badge badge-danger">GET </span> Generic Data
+										</button>
+										<!-- 	</div> -->
+
+										<!-- 	</h2> -->
+									</div>
+									<div id="collapseTwo" class="collapse show"
+										aria-labelledby="headingTwo" data-parent="#accordionExample">
+										<div class="card-body">
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/genericData
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control" id="genericDataJson"
+																		cols="30" rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+									<!-- 	</div>  -->
+									<!-- third -->
+									<!-- <div class="card"> -->
+									<div class="card-header" id="headingThree" role="tab">
+										<!-- <h2 class="mb-0"> -->
+										<!-- 	<div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-success btn-block dropdown-toggle text-left"
+											data-toggle="collapse" data-target="#collapseThree">
+											<span class="badge badge-danger">GET </span> Line and Bar
+											chart Data
+										</button>
+										<!-- </div> -->
+										<!-- </h2> -->
+									</div>
+									<div id="collapseThree" class="collapse"
+										aria-labelledby="headingThree" data-parent="#accordionExample">
+										<div class="card-body">
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/lineAndBarData
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control"
+																		id="lineAndBarChartDataJson" cols="30" rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+									<!-- </div> -->
+									<!-- 4th here 
+								 -->
+									<!-- <div class="card"> -->
+									<div class="card-header" id="headingFour" role="tab">
+										<!-- <h2 class="mb-0"> -->
+										<!-- <div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-info btn-block dropdown-toggle text-left"
+											data-toggle="collapse" data-target="#collapseFour">
+											<span class="badge badge-danger">GET </span> News Feed
+										</button>
+										<!-- 		</div> -->
+										<!-- </h2> -->
+									</div>
+									<div id="collapseFour" class="collapse"
+										aria-labelledby="headingFour" data-parent="#accordionExample">
+										<div class="card-body">
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/news
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control" id="newsFeed" cols="30"
+																		rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+									<!-- 	</div> -->
+									<!-- 5th here -->
+									<!-- <div class="card"> -->
+									<div class="card-header" id="headingFive" role="tab">
+										<!-- <h2 class="mb-0"> -->
+										<!-- 	<div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-warning btn-block dropdown-toggle text-left"
+											data-toggle="collapse" data-target="#collapseFive">
+											<span class="badge badge-danger">GET </span> Refresh Data
+										</button>
+										<!-- 	</div> -->
+										<!-- </h2> -->
+									</div>
+									<div id="collapseFive" class="collapse"
+										aria-labelledby="headingFive" data-parent="#accordionExample">
+										<div class="card-body">
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/refresh
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control" id="refreshBox"
+																		cols="30" rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+									<!-- 	</div> -->
+									<!-- 6th here  -->
+									<!-- <div class="card"> -->
+									<div class="card-header" id="headingSix" role="tab">
+										<!-- <h2 class="mb-0"> -->
+										<!-- 	<div class="dropdown float-left"> -->
+										<button type="button"
+											class="btn btn-danger btn-block dropdown-toggle text-left"
+											data-toggle="collapse" data-target="#collapseSix">
+											<span class="badge badge-info">GET </span>State Data
+										</button>
+										<!-- 	</div> -->
+										<!-- </h2> -->
+									</div>
+									<div id="collapseSix" class="collapse"
+										aria-labelledby="headingSix" data-parent="#accordionExample">
+										<div class="card-body">
+											<div class="table table-striped table-borderless">
+												<table class="table table-hover mb-0">
+													<tbody>
+														<tr scope="row">
+															<th scope="col">End point
+															<td class="float-right">/v1/tracker/stateData
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response Content Type</th>
+															<td class="float-right">application/json
+														</tr>
+														<tr scope="row">
+															<th scope="col">Response</th>
+															<td class="float-right">
+																<div class="form-group">
+																	<textarea class="form-control" id="stateData" cols="30"
+																		rows="10">
+															</textarea>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+						<div class="card-footer ">
+							<!-- <div class="navbar-nav float-right"> -->
+							<div class="dropdown">
+								<a class="btn btn-secondary dropdown-toggle" href="#"
+									role="button" id="dropdownMenuLink" data-toggle="dropdown"
+									aria-haspopup="true" aria-expanded="false">Contact Us</a>
+
+								<div class="dropdown-menu">
+									<form class="px-4 py-3" id="contactForm">
+										<div class="form-group">
+											<label for="emailAddress">Email address</label> <input
+												type="email" class="form-control" id="emailAddress"
+												placeholder="email@example.com">
+										</div>
+										<div class="form-group">
+											<label for="message">Message</label>
+											<textarea class="form-control" id="message" cols="30"
+												rows="10">
+															</textarea>
+										</div>
+
+										<button type="submit" class="btn btn-primary">Submit</button>
+									</form>
+
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- Grid row -->
+
+
+			<!-- Grid row -->
+		</div>
+	</div>
+	<div class="container">
+		<nav class="navbar navbar-expand-md navbar-dark bg-info fixed-bottom">
+			<div class="container">
+				<div class="navbar-nav">
+					<span class="copyright"> <a
+						href="https://www.linkedin.com/in/ramveer7up/" target="_blank">©
+							Ramveer Singh </a></span>
+				</div>
+		</nav>
+	</div>
+
+
+
+
+	<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+	<!-- <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+        crossorigin="anonymous"></script> -->
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+		integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+		crossorigin="anonymous"></script>
+	<script
+		src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+		integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+		crossorigin="anonymous"></script>
+	<script
+		src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.js"></script>
+	<script src="js/chartJsUtils.js"></script>
+	<script src="js/zingChartUtils.js"></script>
+	<script src="https://cdn.zingchart.com/zingchart.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+	<script src="https://unpkg.com/portal-vue"></script>
+
+	<script src="js/dataBindingVue.js"></script>
+	<!-- <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/js/bootstrap4-toggle.min.js"></script> -->
+	<script src="js/newsFeed.js"></script>
+
+	<script>
+		var districtData = [ {
+			"total" : 3401,
+			"phoneNumber" : "020-26127394",
+			"cured" : 295,
+			"district" : [ {
+				"ActiveCases" : 1,
+				"DistrictName" : "Jalna"
+			}, {
+				"ActiveCases" : 1,
+				"DistrictName" : "Gondia"
+			}, {
+				"ActiveCases" : 1,
+				"DistrictName" : "Washim"
+			} ],
+			"state" : "Maharashtra",
+			"deaths" : 187,
+			"activeCases" : 2919,
+			"classx" : "MAHARASHTRA"
+		} ];
+		var textedJson1 = JSON.stringify(districtData, undefined, 4);
+		$('#districtDataJson').text(textedJson1);
+
+		var genericData = {
+			"totalCured" : 1748,
+			"totalMigrated" : 1,
+			"curedIncrement" : "+234",
+			"totalDeaths" : 437,
+			"totalActive" : 11201,
+			"deathIncrement" : "+17",
+			"activeIncrement" : "+377",
+			"updatedOn" : "2020-04-17 08:00:00.0",
+			"migratedIncrement" : "+0"
+		};
+		var textedJson2 = JSON.stringify(genericData, undefined, 4);
+		$('#genericDataJson').text(textedJson2);
+
+		var lineAndBarChartJson = {
+			"topTenStateBar" : {
+				"Active" : {
+					"datasets" : [ {
+						"backgroundColor" : [],
+						"data" : [],
+						"label" : "Active"
+					} ],
+					"labels" : []
+				},
+				"Cured" : {
+					"datasets" : [ {
+						"backgroundColor" : [],
+						"data" : [],
+						"label" : "Cured"
+					} ],
+					"labels" : []
+				},
+				"Deaths" : {
+					"datasets" : [ {
+						"backgroundColor" : [],
+						"data" : [],
+						"label" : "Deaths"
+					} ],
+					"labels" : []
+				}
+			},
+			"topTenDistrictBar" : {
+				"Active" : {
+					"datasets" : [ {
+						"backgroundColor" : [],
+						"data" : [],
+						"label" : "Active"
+					} ],
+					"labels" : []
+				}
+			},
+			"dailyTrend" : {
+				"datasets" : [ {
+					"pointBorderColor" : "#4B515D",
+					"borderColor" : "#4B515D",
+					"backgroundColor" : "#4B515D",
+					"pointHoverRadius" : 4,
+					"data" : [],
+					"pointBorderWidth" : 8,
+					"label" : "Active Cases",
+					"fill" : false,
+					"pointRadius" : 4
+				}, {
+					"pointBorderColor" : "#ff4444",
+					"borderColor" : "#ff4444",
+					"backgroundColor" : "#ff4444",
+					"pointHoverRadius" : 4,
+					"data" : [],
+					"pointBorderWidth" : 8,
+					"label" : "Deaths",
+					"fill" : false,
+					"pointRadius" : 4
+				}, {
+					"pointBorderColor" : "#00C851",
+					"borderColor" : "#00C851",
+					"backgroundColor" : "#00C851",
+					"pointHoverRadius" : 4,
+					"data" : [],
+					"pointBorderWidth" : 8,
+					"label" : "Cured",
+					"fill" : false,
+					"pointRadius" : 4
+				} ],
+				"labels" : []
+			}
+		};
+		var textedJson3 = JSON.stringify(lineAndBarChartJson, undefined, 4);
+		$('#lineAndBarChartDataJson').text(textedJson3);
+
+		var newsJson = {
+			"status" : "ok",
+			"totalResults" : 130,
+			"articles" : [ {
+				"source" : {
+					"id" : "",
+					"name" : ""
+				},
+				"author" : "",
+				"title" : "",
+				"description" : "",
+				"url" : "",
+				"urlToImage" : "",
+				"publishedAt" : "2020-04-12T05:00:50Z",
+				"content" : ""
+			} ]
+		};
+
+		var textedJson4 = JSON.stringify(newsJson, undefined, 4);
+		$('#newsFeed').text(textedJson4);
+
+		var refreshResultJson = {
+			"Message" : "Successfully sync the data from web!!",
+			"Statue" : "Success"
+		}
+
+		var textedJson5 = JSON.stringify(refreshResultJson, undefined, 4);
+		$('#refreshBox').text(textedJson5);
+
+		var stateDataJson = {
+			"data" : [ {
+				"BackGroundColor" : "#660000",
+				"Total" : 1298,
+				"StateName" : "RAJASTHAN",
+				"ActiveCase" : 1131,
+				"Cured" : 164,
+				"StateCode" : "RJ",
+				"Deaths" : 3,
+				"HtmlText" : "<table></table>",
+				"UpdatedOn" : "2020-04-17 08:00:00.0"
+			} ]
+		}
+
+		var textedJson6 = JSON.stringify(stateDataJson, undefined, 4);
+		$('#stateData').text(textedJson6);
+
+		$(document).ready(function() {
+
+			// SUBMIT FORM
+			$("form").submit(function(event) {
+				// Prevent the form from submitting via the browser.
+				event.preventDefault();
+
+				var inputs = $(this).find('input');
+				var inputs2 = $(this).find('textarea');
+				
+
+				// prepare data from input-form
+				var data = {
+					email : $(inputs[0]).val(),
+					message : $(inputs2[0]).val()
+				}
+
+				ajaxPost(data);
+				// reset input data
+				$(inputs[0]).val("");
+				$(inputs2[0]).val("")
+			});
+
+			function ajaxPost(data) {
+				// DO POST
+				console.log('data to be posted is ...',data)
+				$.ajax({
+					type : "POST",
+					contentType : "application/json",
+					url :  "/v1/tracker/contact",
+					headers:{
+		        		'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYW12ZWVyQWRtaW45MzIiLCJleHAiOjE2NTkyOTg1ODEsImlhdCI6MTU4NzI5ODU4MX0.N75CGJchg4J3uR6k9Y2JnjALlScK4mp3TOOPcTXBG8g'
+		        	},
+					data : JSON.stringify(data),
+					dataType : 'text',
+					success : function(result) {
+						var successText = result;
+						alert("Successfully saved: "+result)
+					},
+					error : function(e) {
+						var errorText = e.responseText;
+						alert("Error!: "+errorText);
+						
+					}
+				});
+
+			}
+
+		});
+	</script>
+</body>
+
+</html>
