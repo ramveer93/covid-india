@@ -12,7 +12,7 @@ This is springboot-bootstrap application to show the dashboard for covid-19 case
 # Demo
 The app is deployed on gooogle cloud and can be access via url:
 
-  - https://covid-19.com
+  - will be available soon
   
 # How to setup
 ```git
