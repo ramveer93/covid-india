@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.covid.tracker.csvparser.ParseCsvFromGitHub;
+import com.covid.tracker.email.EmailClient;
 import com.covid.tracker.httpClient.HttpRequest;
 import com.covid.tracker.model.AuthRequest;
 import com.covid.tracker.model.ContactInfo;
@@ -63,6 +65,12 @@ public class CovidTrackerController {
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
+
+	@Autowired
+	private ParseCsvFromGitHub csv;
+
+	@Autowired
+	private EmailClient emailClient;
 
 	/**
 	 * Test method
@@ -209,11 +217,16 @@ public class CovidTrackerController {
 
 	@CrossOrigin(origins = "http://localhost:8080")
 	@RequestMapping(value = "/lineAndBarData", method = RequestMethod.GET, produces = "application/json")
-	public ResponseEntity<Object> getTrendAndBarChartData() {
+	public ResponseEntity<Object> getTrendAndBarChartData(@RequestParam("state") String state) {
 		this.LOGGER.info("started getTrendAndBarChartData with args: {} ");
 		JSONObject result = new JSONObject();
 		try {
-			result = this.service.getLineAndBarData();
+			if(state.equals("India")) {
+				result = this.service.getLineAndBarData();
+			}else {
+				result =  this.service.getDailyTrendForState(state);
+			}
+			
 			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 		} catch (Exception e) {
 
@@ -251,7 +264,7 @@ public class CovidTrackerController {
 	public ResponseEntity<Object> saveContact(@RequestBody ContactInfo contact) {
 		JSONObject result = new JSONObject();
 		try {
-			System.out.println("contact insfo" + contact.toString());
+			
 			if (!contact.getEmail().isEmpty() && !contact.getMessage().isEmpty() && contact.getEmail() != null
 					&& contact.getMessage() != null && contact.getEmail().length() >= 0
 					&& contact.getMessage().length() >= 0) {
@@ -368,14 +381,14 @@ public class CovidTrackerController {
 	public ResponseEntity<Object> refreshCompleteWorld() {
 		JSONObject result = new JSONObject();
 		try {
-			LOGGER.info("Completely world data refresh started at : "+new Date().toString());
+			LOGGER.info("Completely world data refresh started at : " + new Date().toString());
 			this.service.refreshWorldData();
-			LOGGER.info("Completely world data refresh Done at : "+new Date().toString());
+			LOGGER.info("Completely world data refresh Done at : " + new Date().toString());
 			result.put("message", "Successfully refreshed world data completely");
 			result.put("status", "success");
 			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 		} catch (Exception e) {
-			LOGGER.error("Completely world data refresh aborted due to error : "+e.getMessage()+" "+e.getCause());
+			LOGGER.error("Completely world data refresh aborted due to error : " + e.getMessage() + " " + e.getCause());
 			JSONObject obj = new JSONObject();
 			e.printStackTrace();
 			obj.put("status", "Error");
@@ -416,6 +429,53 @@ public class CovidTrackerController {
 		}
 
 	}
+
+	@RequestMapping(value = "/csv", method = RequestMethod.GET, produces = "application/json")
+	public ResponseEntity<Object> getCsv() {
+		JSONObject result = new JSONObject();
+		try {
+			JSONObject array = this.csv.getCSVAndConvertToJson();
+			return new ResponseEntity<>(array.toString(), HttpStatus.OK);
+		} catch (Exception e) {
+			result.put("message", e.getMessage() + " cause: " + e.getCause());
+			result.put("status", "failed");
+			return new ResponseEntity<>(result.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+
+	@RequestMapping(value = "/sendEmail", method = RequestMethod.GET, produces = "application/json")
+	public ResponseEntity<Object> sendEmail() {
+		JSONObject result = new JSONObject();
+		try {
+			this.emailClient.sendEmail();
+			result.put("message", "Email sent successfully");
+			result.put("status", "success");
+			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
+		} catch (Exception e) {
+			result.put("message", e.getMessage() + " cause: " + e.getCause());
+			result.put("status", "failed");
+			return new ResponseEntity<>(result.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+	
+	@RequestMapping(value = "/stateList", method = RequestMethod.GET, produces = "application/json")
+	public ResponseEntity<Object> stateList() {
+		JSONObject result = new JSONObject();
+		try {
+			JSONArray jsonArray = this.service.getStateList();
+			return new ResponseEntity<>(jsonArray.toString(), HttpStatus.OK);
+		} catch (Exception e) {
+			result.put("message", e.getMessage() + " cause: " + e.getCause());
+			result.put("status", "failed");
+			return new ResponseEntity<>(result.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+	
+	
+	
 
 	private boolean shouldRefresh() {
 		Date dbDate = this.genericDataRepo.findLatestUpdatedDate().getUpdatedOn();

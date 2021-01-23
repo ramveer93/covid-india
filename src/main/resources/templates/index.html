@@ -73,7 +73,7 @@
 
 <body>
 	<nav
-		class="navbar navbar-expand-md navbar-dark bg-primary fixed-top sticky-top">
+		class="navbar nav-pills navbar-expand-md navbar-dark bg-secondary fixed-top sticky-top">
 		<div class="container" id="navId">
 			<div class="navbar-nav">
 				<a href="#" class="nav-item nav-link active"> <i
@@ -245,13 +245,24 @@
 			<hr>
 			<div class="row">
 				<!-- <div class="col bg-primary">daily trend (how many increased) chart</div> -->
+
 				<div class="col-md-12">
 					<div class="card ">
 						<div class="card-header ">
-							<h5 class="card-title">Daily Trend</h5>
-							<!-- <p class="card-category">24 Hours performance</p> -->
+							<h5 class="card-title" id="dailyTrendText">Daily Trend in India</h5>
+
+							<div id="dailyTrendSpinner" class="spinner-border text-warning"
+								role="status"></div>
+							<div class="float-right">
+								<select class="form-control form-control-xs selectpicker"
+									data-live-search="true" data-title="Location" id="state_list">
+								</select>
+							</div>
 						</div>
-						<div class="card-body ">
+						<div class="card-body " id="parentTrend">
+						<div id="indiaTrendSpinnerDropDown"
+								class="spinner-border text-warning" role="status"
+								style="display: none;"></div>
 							<canvas id="dailyTrendChart" style="height: 20rem"></canvas>
 						</div>
 						<!-- <div class="card-footer ">
@@ -262,6 +273,7 @@
                         </div> -->
 					</div>
 				</div>
+
 			</div>
 			<hr>
 			<div class="row">
@@ -552,7 +564,7 @@
 		});
 
 		$(document).ready(function() {
-			chartJsUtils.initChartsPages();
+			chartJsUtils.initChartsPages("India");
 		});
 		$(document).ready(function() {
 			zingChartUtils.initIndiaMap();
@@ -562,6 +574,50 @@
 		});
 		$(document).ready(function() {
 			newsFeed.getNewsData();
+		});
+
+		let dropdown = $('#state_list');
+		dropdown.empty();
+		dropdown.append('<option selected="true" disabled>Selection</option>');
+		dropdown.prop('selectedIndex', 0);
+		$
+				.ajax({
+					type : "GET",
+					contentType : "application/json",
+					url : "/v1/tracker/stateList",
+					headers : {
+						'Authorization' : 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYW12ZWVyQWRtaW45MzIiLCJleHAiOjE2NTkyOTg1ODEsImlhdCI6MTU4NzI5ODU4MX0.N75CGJchg4J3uR6k9Y2JnjALlScK4mp3TOOPcTXBG8g'
+					},
+					success : function(data) {
+						$.each(data, function(key, entry) {
+							dropdown.append($('<option></option>').attr(
+									'value', entry.abbreviation).text(
+									entry.state));
+						})
+
+					},
+					error : function(e) {
+						var errorText = e.responseText;
+						console.log('error: ' + errorText);
+
+					}
+				});
+
+		$(function() {
+			$('select').change(
+			function() 
+			{
+						$('#indiaTrendSpinnerDropDown').css('display',
+								'');
+						document.getElementById("dailyTrendChart").remove(); //canvas
+						div = document.querySelector("#parentTrend"); //canvas parent element
+						div.insertAdjacentHTML("afterbegin","<canvas id='dailyTrendChart'></canvas>"); //adding the canvas again
+						console.log($(this).val());
+						var state = $(this).val();
+						$("#dailyTrendText").text(
+								'Daily Trend For ' + state);
+						chartJsUtils.initChartsPages(state);
+					});
 		});
 	</script>
 </body>

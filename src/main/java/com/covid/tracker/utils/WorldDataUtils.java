@@ -161,7 +161,7 @@ public class WorldDataUtils {
 
 	public String getHtmlStringForZingChart(WorldData worldData) {
 		long total = worldData.getConfirmed() + worldData.getDeaths() + worldData.getRecovered();
-		return "<table class='table-sm table-striped table-borderless table-info'><tbody><tr><th>" + worldData.getName()
+		return "<table class='table-sm table-borderless'><tbody><tr><th>" + worldData.getName()
 				+ "</th></tr><tr><th>Total</th><td class='float-right'>" + total
 				+ "</th></tr><tr><th>Active</th><td class='float-right'>" + worldData.getConfirmed()
 				+ "</th></tr><tr><th>Deaths</th><td class='float-right'>" + worldData.getDeaths()

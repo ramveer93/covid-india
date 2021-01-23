@@ -24,6 +24,7 @@ import com.covid.tracker.httpClient.HttpRequest;
 import com.covid.tracker.httpClient.RestClient;
 import com.covid.tracker.model.DistrictWiseCasesVo;
 import com.covid.tracker.model.GenericData;
+import com.covid.tracker.model.IndiaStateTrend;
 import com.covid.tracker.model.NewsFeedData;
 import com.covid.tracker.model.PrimaryKeyForWorldTrend;
 import com.covid.tracker.model.StateWiseCases;
@@ -31,6 +32,7 @@ import com.covid.tracker.model.WorldCountryTrend;
 import com.covid.tracker.model.WorldData;
 import com.covid.tracker.repository.DistrictWiseCasesRepository;
 import com.covid.tracker.repository.GenericDataRepository;
+import com.covid.tracker.repository.IndiaStateTrendRepository;
 import com.covid.tracker.repository.NewsFeedDataRepository;
 import com.covid.tracker.repository.StateRepository;
 import com.covid.tracker.repository.WorldGenericRepository;
@@ -65,6 +67,8 @@ public class CovidTrackerService {
 	private WorldGenericRepository worldGenericRepository;
 	@Autowired
 	private WorldTrendRepository worldTrendRepository;
+	@Autowired
+	private IndiaStateTrendRepository stateTrendRepo;
 
 	public String refreshDataFromWeb() {
 		LOGGER.info("service started syncing data from web");
@@ -94,7 +98,7 @@ public class CovidTrackerService {
 				innerJsonObj.put("tooltip", toolTip);
 				innerJsonObj.put("backgroundColor", obj.getBackGroundColor());
 				innerJsonObj.put("label", label);
-				result.put(obj.getStateCode(), innerJsonObj);
+				result.put(obj.getStateCode()==null?"":obj.getStateCode(), innerJsonObj);
 
 			});
 
@@ -553,7 +557,7 @@ public class CovidTrackerService {
 
 	}
 
-	private String capetalizeFirstChar(String input) {
+	public String capetalizeFirstChar(String input) {
 		input = input.toLowerCase();
 		if (input.length() >= 2) {
 			return input.substring(0, 1).toUpperCase() + input.substring(1);
@@ -711,7 +715,7 @@ public class CovidTrackerService {
 		return result;
 	}
 
-	private JSONArray sortJsonArrayBasedOnDate(JSONArray unsortedJsonArray) {
+	public JSONArray sortJsonArrayBasedOnDate(JSONArray unsortedJsonArray) {
 		JSONArray sortedJsonArray = new JSONArray();
 		List<JSONObject> jsonValues = new ArrayList<JSONObject>();
 		for (int i = 0; i < unsortedJsonArray.length(); i++) {
@@ -733,7 +737,7 @@ public class CovidTrackerService {
 					LOGGER.error("Error sorting json array values: " + e.getMessage());
 				}
 
-				return valB.compareTo(valA);
+				return -valB.compareTo(valA);
 				// if you want to change the sort order, simply use the following:
 				// return -valA.compareTo(valB);
 			}
@@ -798,5 +802,114 @@ public class CovidTrackerService {
 			resultArray.put(resultObj);
 		});
 		return resultArray;
+	}
+	
+	public JSONArray getStateList() {
+		List<String> result = this.stateRepo.getStateList();
+		result.add("India");
+		JSONArray resultArray = new JSONArray();
+		result.forEach((obj) -> {
+			JSONObject resultObj = new JSONObject();
+			resultObj.put("state", obj);
+			resultArray.put(resultObj);
+		});
+		return resultArray;
+	}
+
+	public JSONObject getDailyTrendForState(String state) {
+		JSONObject older = getLineAndBarData();
+		older.remove("older");
+		JSONObject stateTrend = getDailyTrendForIndividualState(state);
+		older.put("dailyTrend", stateTrend);
+		return older;
+	}
+	
+	private JSONObject getDailyTrendForIndividualState(String state) {
+//		JSONObject finalResult = new JSONObject();
+		/**
+		 * now get dailyTrend data for 3 categories first get the data from db
+		 */
+
+		List<IndiaStateTrend> dailTrendList = stateTrendRepo.getLatestTwentyForCountry(state);
+
+		/**
+		 * first get the trend for active
+		 */
+		JSONArray dataSetArrayForAll = new JSONArray();
+
+		/**
+		 * Active trend
+		 */
+		JSONObject activeObj = new JSONObject();
+		activeObj.put("fill", false);
+		activeObj.put("label", "Active Cases");
+		activeObj.put("borderColor", "#4B515D");
+		activeObj.put("backgroundColor", "#4B515D");
+		activeObj.put("pointBorderColor", "#4B515D");
+		activeObj.put("pointRadius", 4);
+		activeObj.put("pointHoverRadius", 4);
+		activeObj.put("pointBorderWidth", 8);
+		JSONArray dataForActive = new JSONArray();
+
+		for (int i = 0; i < dailTrendList.size(); i++) {
+			IndiaStateTrend stateData = dailTrendList.get(i);
+			dataForActive.put(stateData.getActive());
+		}
+		activeObj.put("data", dataForActive);
+		dataSetArrayForAll.put(activeObj);
+
+		/**
+		 * Death trend
+		 */
+		JSONObject deathObj = new JSONObject();
+		deathObj.put("fill", false);
+		deathObj.put("label", "Deaths");
+		deathObj.put("borderColor", "#ff4444");
+		deathObj.put("backgroundColor", "#ff4444");
+		deathObj.put("pointBorderColor", "#ff4444");
+		deathObj.put("pointRadius", 4);
+		deathObj.put("pointHoverRadius", 4);
+		deathObj.put("pointBorderWidth", 8);
+		JSONArray dataForDeath = new JSONArray();
+
+		for (int i = 0; i < dailTrendList.size(); i++) {
+			IndiaStateTrend stateData = dailTrendList.get(i);
+			dataForDeath.put(stateData.getDeaths());
+		}
+		deathObj.put("data", dataForDeath);
+		dataSetArrayForAll.put(deathObj);
+
+		/**
+		 * Cured trend
+		 */
+		JSONObject curedObj = new JSONObject();
+		curedObj.put("fill", false);
+		curedObj.put("label", "Cured");
+		curedObj.put("borderColor", "#00C851");
+		curedObj.put("backgroundColor", "#00C851");
+		curedObj.put("pointBorderColor", "#00C851");
+		curedObj.put("pointRadius", 4);
+		curedObj.put("pointHoverRadius", 4);
+		curedObj.put("pointBorderWidth", 8);
+		JSONArray dataForCured = new JSONArray();
+		JSONArray labelsForAll = new JSONArray();
+
+		for (int i = 0; i < dailTrendList.size(); i++) {
+			IndiaStateTrend stateTrend = dailTrendList.get(i);
+			dataForCured.put(stateTrend.getCured());
+			labelsForAll.put(stateTrend.getPk().getDate());
+		}
+		curedObj.put("data", dataForCured);
+		dataSetArrayForAll.put(curedObj);
+
+		/**
+		 * we are done with dataset now create fin obj
+		 */
+		JSONObject dailyTrendFinalObj = new JSONObject();
+		dailyTrendFinalObj.put("labels", labelsForAll);
+		dailyTrendFinalObj.put("datasets", dataSetArrayForAll);
+
+//		finalResult.put("dailyTrend", dailyTrendFinalObj);
+		return dailyTrendFinalObj;
 	}
 }

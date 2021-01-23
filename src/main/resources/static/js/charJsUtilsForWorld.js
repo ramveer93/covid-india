@@ -26,7 +26,19 @@ chartJsUtilsForWorld = {
         legend: {
           display: true,
           position: 'top'
-        }
+        },
+        scales: {
+	        xAxes: [{
+	            gridLines: {
+	                display:false
+	            }
+	        }],
+	        yAxes: [{
+	            gridLines: {
+	                display:false
+	            }   
+	        }]
+	    }
       };
 
       var lineChart = new Chart(dailyTrendChart, {
@@ -36,14 +48,19 @@ chartJsUtilsForWorld = {
         options: chartOptions
       });
       var barChartOptions = {
-        scales: {
-          xAxes: [{
-            gridLines: {
-              offsetGridLines: true
-            }
-          }]
-        }
-      };
+  		    scales: {
+		        xAxes: [{
+		            gridLines: {
+		                display:false
+		            }
+		        }],
+		        yAxes: [{
+		            gridLines: {
+		                display:false
+		            }   
+		        }]
+		    }
+		};
       var barData = {
         labels: ["Rajasthan", "UP", "MAdhyapradesh", "Karnataka", "Sikkim", "Kerla", "Mahrastra", "Delhi", "Jammu & Kashmir", "Manipur"],
         datasets: [{

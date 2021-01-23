@@ -9,10 +9,12 @@ chartJsUtils = {
     return color;
   },
 
-  initChartsPages: function () {
+  initChartsPages: function (state) {
 
-    this.getChartData().then((chartData) => {
+    this.getChartData(state).then((chartData) => {
 //    console.log('chart data........',chartData);
+    	$("#dailyTrendSpinner").hide();
+    	$('#indiaTrendSpinnerDropDown').hide();
       chartColor = "#FFFFFF";
 
       var dailyTrendChart = document.getElementById("dailyTrendChart");
@@ -20,8 +22,21 @@ chartJsUtils = {
         legend: {
           display: true,
           position: 'top'
-        }
+        },
+        scales: {
+	        xAxes: [{
+	            gridLines: {
+	                display:false
+	            }
+	        }],
+	        yAxes: [{
+	            gridLines: {
+	                display:false
+	            }   
+	        }]
+	    }
       };
+      
 
       var lineChart = new Chart(dailyTrendChart, {
         type: 'line',
@@ -29,15 +44,29 @@ chartJsUtils = {
         data: chartData.dailyTrend,
         options: chartOptions
       });
+//      var barChartOptions = {
+//        scales: {
+//          xAxes: [{
+//            gridLines: {
+//              offsetGridLines: true
+//            }
+//          }]
+//        }
+//      };
       var barChartOptions = {
-        scales: {
-          xAxes: [{
-            gridLines: {
-              offsetGridLines: true
-            }
-          }]
-        }
-      };
+    		    scales: {
+    		        xAxes: [{
+    		            gridLines: {
+    		                display:false
+    		            }
+    		        }],
+    		        yAxes: [{
+    		            gridLines: {
+    		                display:false
+    		            }   
+    		        }]
+    		    }
+    		};
       var barData = {
         labels: ["Rajasthan", "UP", "MAdhyapradesh", "Karnataka", "Sikkim", "Kerla", "Mahrastra", "Delhi", "Jammu & Kashmir", "Manipur"],
         datasets: [{
@@ -297,8 +326,8 @@ chartJsUtils = {
     return barData;
   },
 
-  getChartData: function (callback) {
-    var url = "/v1/tracker/lineAndBarData";
+  getChartData: function (state, callback) {
+    var url = "/v1/tracker/lineAndBarData?state="+state;
 //    console.log('url to be hit....', url);
     return fetch(url,{
     	method: 'GET',

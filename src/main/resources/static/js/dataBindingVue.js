@@ -54,138 +54,6 @@ dataBindingVue = {
                 data: {
                     totalActiveq: 5600,
                     items: district
-
-                    // [
-                    // {
-                    // "state": "Rajasthan",
-                    // "activeCases": 120,
-                    // "cured": 100,
-                    // "deaths": 10,
-                    // "total": 230,
-                    // "classx": "Rajasthan",
-                    // "district": [
-                    // {
-                    // "ActiveCases": 10,
-                    // "DistrictName": "Bharatpur"
-                    // },
-                    // {
-
-                    // "ActiveCases": 12,
-                    // "DistrictName": "Dholpur"
-                    // },
-                    // {
-                    // "ActiveCases": 40,
-                    // "DistrictName": "Sawai Madhopur"
-
-                    // }
-                    // ]
-                    // },
-                    // {
-                    // "state": "Karnataka",
-                    // "activeCases": 200,
-                    // "cured": 300,
-                    // "deaths": 40,
-                    // "total": 540,
-                    // "classx": "Karnataka",
-                    // "district": [
-                    // {
-                    // "DistrictName": "Bangalore",
-                    // "ActiveCases": 400
-                    // },
-                    // {
-                    // "DistrictName": "Tumkur",
-                    // "ActiveCases": 90
-                    // },
-                    // {
-                    // "DistrictName": "Mysure",
-                    // "ActiveCases": 80
-                    // },
-                    // {
-                    // "DistrictName": "Hassan",
-                    // "ActiveCases": 80,
-                    // }
-                    // ]
-                    // },
-                    // {
-                    // "state": "Madhya Pradesh",
-                    // "activeCases": 500,
-                    // "cured": 100,
-                    // "deaths": 90,
-                    // "total": 690,
-                    // "classx": "MadhyaPradesh",
-                    // "district": [
-                    // {
-                    // "DistrictName": "Vidisha",
-                    // "ActiveCases": 40
-                    // },
-                    // {
-                    // "DistrictName": "Bhopal",
-                    // "ActiveCases": 150
-                    // },
-                    // {
-                    // "DistrictName": "Indore",
-                    // "ActiveCases": 200
-                    // },
-                    // {
-                    // "DistrictName": "Khandawa",
-                    // "ActiveCases": 80,
-                    // }
-                    // ]
-                    // },
-                    // {
-                    // "state": "Uttar Pradesh",
-                    // "activeCases": 500,
-                    // "cured": 100,
-                    // "deaths": 90,
-                    // "total": 690,
-                    // "classx": "UtterPradesh",
-                    // "district": [
-                    // {
-                    // "DistrictName": "Agra",
-                    // "ActiveCases": 40
-                    // },
-                    // {
-                    // "DistrictName": "Lucknow",
-                    // "ActiveCases": 150
-                    // },
-                    // {
-                    // "DistrictName": "Azamghar",
-                    // "ActiveCases": 200
-                    // },
-                    // {
-                    // "DistrictName": "Barely",
-                    // "ActiveCases": 80,
-                    // }
-                    // ]
-                    // },
-                    // {
-                    // "state": "Uttaranchal",
-                    // "activeCases": 500,
-                    // "cured": 100,
-                    // "deaths": 90,
-                    // "total": 690,
-                    // "classx": "Uttaranchal",
-                    // "district": [
-                    // {
-                    // "DistrictName": "Agra",
-                    // "ActiveCases": 40
-                    // },
-                    // {
-                    // "DistrictName": "Lucknow",
-                    // "ActiveCases": 150
-                    // },
-                    // {
-                    // "DistrictName": "Azamghar",
-                    // "ActiveCases": 200
-                    // },
-                    // {
-                    // "DistrictName": "Barely",
-                    // "ActiveCases": 80,
-                    // }
-                    // ]
-                    // }
-
-                    // ]
                 }
             });
         });
@@ -193,7 +61,7 @@ dataBindingVue = {
     },
     getGenericData: function (callback) {
         var url = "/v1/tracker/genericData";
-        return fetch(url,{
+        return fetch(url,
         	method: 'GET',
         	headers:{
         		'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYW12ZWVyQWRtaW45MzIiLCJleHAiOjE2NTkyOTg1ODEsImlhdCI6MTU4NzI5ODU4MX0.N75CGJchg4J3uR6k9Y2JnjALlScK4mp3TOOPcTXBG8g'

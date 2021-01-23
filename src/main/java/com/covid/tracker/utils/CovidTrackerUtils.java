@@ -9,7 +9,6 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -37,12 +36,16 @@ import org.springframework.util.FileCopyUtils;
 import com.covid.tracker.model.DistrictList;
 import com.covid.tracker.model.DistrictWiseCasesVo;
 import com.covid.tracker.model.GenericData;
+import com.covid.tracker.model.IndiaStateTrend;
+import com.covid.tracker.model.IndiaStateTrendPk;
 import com.covid.tracker.model.PrimaryKeyForDistrictWiseCases;
 import com.covid.tracker.model.StateWiseCases;
 import com.covid.tracker.repository.DistrictRepository;
 import com.covid.tracker.repository.DistrictWiseCasesRepository;
 import com.covid.tracker.repository.GenericDataRepository;
+import com.covid.tracker.repository.IndiaStateTrendRepository;
 import com.covid.tracker.repository.StateRepository;
+import com.covid.tracker.service.CovidTrackerService;
 
 @Component
 public class CovidTrackerUtils {
@@ -59,6 +62,10 @@ public class CovidTrackerUtils {
 
 	@Autowired
 	private DistrictRepository districtRepo;
+	@Autowired
+	private IndiaStateTrendRepository stateTrendRepo;
+	@Autowired
+	private CovidTrackerService covidService;
 
 	@Autowired
 	private DistrictWiseCasesRepository districtWiseCasesRepo;
@@ -67,7 +74,6 @@ public class CovidTrackerUtils {
 
 	@Autowired
 	private Environment env;
-
 
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
@@ -121,7 +127,7 @@ public class CovidTrackerUtils {
 			String stateName = "";
 			String phoneNumber = "";
 			this.stateRepo.updatePhoneNumber("03192-232102", "ANDAMANNICOBAR");
-			if (strsSize >= 0) {
+			if (strsSize > 0) {
 				if (isNumber(row[0].trim())) {
 					if (strsSize == 3 && isNumber(row[2].substring(0, 2))) {
 						stateName = row[1].replaceAll("\\\\s", "").toUpperCase();
@@ -181,6 +187,10 @@ public class CovidTrackerUtils {
 				int lengthOfString = singleLine.length;
 				if (lengthOfString == 2 && isNumber(singleLine[1].trim())) {
 					String districtName = singleLine[0].trim();
+					if (Character.isDigit(districtName.charAt(0))) {
+						districtName = districtName.replaceAll("[0-9]", "").trim();
+
+					}
 					int casesInDistrict = Integer.parseInt(singleLine[1].trim());
 					String stateName = districtStateMapping.get(districtName.toUpperCase());
 					if (stateName != null && !(stateName.replaceAll("\\s", "").toUpperCase())
@@ -192,7 +202,11 @@ public class CovidTrackerUtils {
 						districtData.setPrimaryKey(pk);
 						districtData.setPositiveCases(casesInDistrict);
 						districtData.setCreatedOn(latestUpdatedDate);
+
+//						LOGGER.info("Saving for district: "+districtData.getPrimaryKey().getDistrictName()+" state: "+districtData.getPrimaryKey().getStateName()+" cases: "+casesInDistrict);
 						districtWiseCasesRepo.save(districtData);
+					} else {
+						LOGGER.info("Not saving for stateName " + stateName + " districtName " + districtName);
 					}
 
 				} else if (lengthOfString == 3 && isNumber(singleLine[2].trim())) {
@@ -213,14 +227,18 @@ public class CovidTrackerUtils {
 					districtData.setPrimaryKey(pk);
 					districtData.setPositiveCases(casesInDistrict);
 					districtData.setCreatedOn(latestUpdatedDate);
+//					LOGGER.info("Saving for district: "+districtData.getPrimaryKey().getDistrictName()+" state: "+districtData.getPrimaryKey().getStateName());
 					districtWiseCasesRepo.save(districtData);
+				}else {
+					LOGGER.info("Not saving for this line .." + singleLineData);
 				}
+				
 			}
 		}
-		if(pddDocument!=null) {
+		if (pddDocument != null) {
 			pddDocument.close();
 		}
-		
+
 	}
 
 	private Map<String, String> getDistrictPdf() {
@@ -230,7 +248,13 @@ public class CovidTrackerUtils {
 			Elements contentClearfix = doc.getElementsByClass("canvas-menu");
 			Element contentClearFixElement = contentClearfix.get(0);
 			Elements urlElement = contentClearFixElement.getElementsByAttributeValue("target", "_blank");
-			String districtPdf = urlElement.get(0).absUrl("href");
+			String districtPdf = null;
+			try {
+				districtPdf = urlElement.get(0).absUrl("href");
+			} catch (Exception e) {
+				LOGGER.error("Error fetching district report " + e.getMessage());
+			}
+
 			Elements colXs12TextCenter = doc.getElementsByClass("col-xs-12 text-center");
 			Elements phoneElements = colXs12TextCenter.get(0).getElementsByAttributeValue("target", "_blank");
 			Elements telephones = phoneElements.get(0).getElementsContainingText("Union Territories");
@@ -276,10 +300,10 @@ public class CovidTrackerUtils {
 				LOGGER.info("Successfully got value of last updated, it is : " + lastUpdatedDate);
 				hashMap.put("LastUpdatedOn", lastUpdatedDate);
 				genericData.setUpdatedOn(parseDate(lastUpdatedDate, GMT_5_30, DD_MMMM_YYYY_HH_MM));
-				
+
 			}
 //	        	Total airport passenger screened counts
-			
+
 			Elements passengerScreenedOnAirports = div.getElementsByClass(
 					"field field-name-field-passenger-screened-format field-type-text field-label-above");
 			for (Element element : passengerScreenedOnAirports) {
@@ -305,7 +329,7 @@ public class CovidTrackerUtils {
 //				LOGGER.info("activeCasesCount count: " + activeCasesCount.get(0).text());
 				String totalActiveCases = activeCasesCount.get(0).text();
 				hashMap.put("ActiveCases", totalActiveCases);
-				genericData.setActiveCases(Integer.parseInt(totalActiveCases));
+				genericData.setActiveCases(Integer.parseInt(totalActiveCases.replaceAll(",", "")));
 				LOGGER.info("Successfully got value of total active cases, it is : " + totalActiveCases);
 			}
 
@@ -320,7 +344,7 @@ public class CovidTrackerUtils {
 //				LOGGER.debug("curedDischargedCount count: " + curedDischargedCount.get(0).text());
 				String totalCured = curedDischargedCount.get(0).text();
 				hashMap.put("Cured", totalCured);
-				genericData.setCured(Integer.parseInt(totalCured));
+				genericData.setCured(Integer.parseInt(totalCured.replaceAll(",", "")));
 				LOGGER.info("Successfully got value of total cured cases, it is : " + totalCured);
 			}
 
@@ -335,7 +359,7 @@ public class CovidTrackerUtils {
 //				LOGGER.debug("curedDischargedCount count: " + migratedCount.get(0).text());
 				String totalMigrated = migratedCount.get(0).text();
 				hashMap.put("Migrated", totalMigrated);
-				genericData.setMigrated(Integer.parseInt(totalMigrated));
+				genericData.setMigrated(Integer.parseInt(totalMigrated.replaceAll(",", "")));
 //				LOGGER.info("Successfully got value of total migrated , it is : " + totalMigrated);
 			}
 
@@ -350,7 +374,7 @@ public class CovidTrackerUtils {
 //				LOGGER.debug("deathCount count: " + deathCount.get(0).text());
 				String totalDeaths = deathCount.get(0).text();
 				hashMap.put("Deaths", totalDeaths);
-				genericData.setDeaths(Integer.parseInt(totalDeaths));
+				genericData.setDeaths(Integer.parseInt(totalDeaths.replaceAll(",", "")));
 				LOGGER.info("Successfully got value of total deaths , it is : " + totalDeaths);
 			}
 
@@ -400,6 +424,7 @@ public class CovidTrackerUtils {
 						state.setCuredCount(Integer.parseInt(curedCases.trim()));
 						state.setUpdatedOn(parseDate(hashMap.get("LastUpdatedOn"), GMT_5_30, DD_MMMM_YYYY_HH_MM));
 						state.setTotalCases(state.getActiveCases() + state.getCuredCount() + state.getDeathCount());
+						LOGGER.info("getting state code for state..." + state.getStateName());
 						state.setStateCode(stateCodes.get(state.getStateName()));
 						state.setHtmlText(getHtmlStringForZingChart(state));
 //						state.setBackGroundColor(getRandomColor());
@@ -417,6 +442,17 @@ public class CovidTrackerUtils {
 //				StateWiseCases state = stateData.getValue();
 //				LOGGER.debug("saving state data to DB for state:  " + stateData);
 				stateRepo.save(stateData);
+				IndiaStateTrend stateTrend = new IndiaStateTrend();
+				IndiaStateTrendPk pk = new IndiaStateTrendPk();
+				pk.setStateName(stateData.getStateName());
+				pk.setDate(stateData.getUpdatedOn());
+				stateTrend.setPk(pk);
+				stateTrend.setActive(stateData.getActiveCases());
+				stateTrend.setCured(stateData.getCuredCount());
+				stateTrend.setDeaths(stateData.getDeathCount());
+				stateTrendRepo.save(stateTrend);
+				LOGGER.info(
+						"successfully saved data for " + stateData.getStateName() + " in state cases and state trend");
 //				LOGGER.debug("Successfully saved state data for state:  " + stateData);
 //				LOGGER.info("state wise data saved successfully Now saving the data for zing Chart");
 
@@ -426,7 +462,7 @@ public class CovidTrackerUtils {
 
 	private List<StateWiseCases> setColors(List<StateWiseCases> input) {
 		List<StateWiseCases> result = new ArrayList<>();
-LOGGER.info("setting color");
+		LOGGER.info("setting color");
 		try {
 //			JSONObject jsonObject = loadJSONObject("colors.json");
 //			input.sort(Comparator.comparing(StateWiseCases::getTotalCases).reversed()
@@ -444,22 +480,22 @@ LOGGER.info("setting color");
 		return result;
 
 	}
-	
+
 	private String setColor(long totalCases) {
 		String bgColor = "";
-		if(totalCases>=5000) {
+		if (totalCases >= 5000) {
 			bgColor = "#7a0177";
-		}else if(totalCases>=4000 && totalCases<5000) {
+		} else if (totalCases >= 4000 && totalCases < 5000) {
 			bgColor = "#ae017e";
-		}else if(totalCases>=3000 && totalCases<4000) {
+		} else if (totalCases >= 3000 && totalCases < 4000) {
 			bgColor = "#dd3497";
-		}else if(totalCases>=2000 && totalCases<3000) {
+		} else if (totalCases >= 2000 && totalCases < 3000) {
 			bgColor = "#f768a1";
-		}else if(totalCases>=1000 && totalCases<2000) {
+		} else if (totalCases >= 1000 && totalCases < 2000) {
 			bgColor = "#fa9fb5";
-		}else if(totalCases>=500 && totalCases<1000) {
+		} else if (totalCases >= 500 && totalCases < 1000) {
 			bgColor = "#fcc5c0";
-		}else if(totalCases<500) {
+		} else if (totalCases < 500) {
 			bgColor = "#fde0dd";
 		}
 		return bgColor;
@@ -473,8 +509,8 @@ LOGGER.info("setting color");
 	}
 
 	private String getHtmlStringForZingChart(StateWiseCases stateData) {
-		return "<table class='table-sm table-striped table-borderless table-info'><tbody><tr><th>"
-				+ stateData.getStateName() + "</th></tr><tr><th>Total</th><td class='float-right'>"
+		return "<table class='table-sm  table-borderless'><tbody><tr><th>"
+				+ this.covidService.capetalizeFirstChar(stateData.getStateName()) + "</th></tr><tr><th>Total</th><td class='float-right'>"
 				+ stateData.getTotalCases() + "</th></tr><tr><th>Active</th><td class='float-right'>"
 				+ stateData.getActiveCases() + "</th></tr><tr><th>Deaths</th><td class='float-right'>"
 				+ stateData.getDeathCount() + "</th></tr><tr><th>Cured</th><td class='float-right'>"
@@ -494,7 +530,7 @@ LOGGER.info("setting color");
 			return sqlDate;
 		} catch (ParseException e) {
 			e.printStackTrace();
-			LOGGER.error("Error parsing the date : " + e.getMessage()+" "+e.getCause()+" "+e.getStackTrace());
+			LOGGER.error("Error parsing the date : " + e.getMessage() + " " + e.getCause() + " " + e.getStackTrace());
 		}
 		return null;
 	}

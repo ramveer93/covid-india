@@ -22,12 +22,13 @@ public class WorldDataScheduler {
 	@Autowired
 	private WorldGenericRepository worldGenericRepo;
 
-	@Scheduled(cron = "0 0 7 * * ?", zone = "Asia/Calcutta")
+	@Scheduled(cron = "0 0 0/3 * * ?", zone = "Asia/Calcutta")
 //	* /5 * * * *
 //	every day at 10 * 22 * * *
 //	* 0/2 * * * ? ----> worling
 //	0 0 0/3 * * ?
 //	0 0 12 * * ? -----> every day at 12 
+//	0 0 7 * * ?   at 7 am every day 
 	public void refreshWorldData() {
 		LOGGER.info("Scheduler started to refresh world data at : " + new Date().toString());
 		try {

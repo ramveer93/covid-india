@@ -33,5 +33,8 @@ public interface StateRepository extends JpaRepository<StateWiseCases, Long> {
 	@Transactional
 	@Query(" update StateWiseCases sd set sd.phoneNumber = :phoneNumber where sd.stateName = :stateName")
 	int updatePhoneNumber(@Param("phoneNumber") String phoneNumber, @Param("stateName") String stateName);
+	
+	@Query(value = "select state_name from state_wise_data order by state_name asc" , nativeQuery = true)
+	List<String> getStateList();
 
 }
